@@ -1,0 +1,17 @@
+.container {
+    border-bottom: 1px solid;
+    /* background-color: aqua; */
+    display: flex;
+    align-items: end;
+    gap: 1%;
+}
+
+.ungu {
+    border-color: var(--ungu);
+}
+.hijau {
+    border-color: var(--hijau);
+}
+.coklat {
+    border-color: var(--coklat);
+}

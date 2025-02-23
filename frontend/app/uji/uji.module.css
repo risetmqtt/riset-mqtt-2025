@@ -1,0 +1,26 @@
+.grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5em;
+}
+
+.itemGrid {
+    display: flex;
+    flex-direction: column;
+    /* height: 230px; */
+    align-items: center;
+    text-align: center;
+    border-radius: 1em;
+}
+.itemGrid:nth-child(3n - 2) {
+    background-color: var(--hijau1);
+    color: var(--hijau);
+}
+.itemGrid:nth-child(3n - 1) {
+    background-color: var(--coklat1);
+    color: var(--coklat);
+}
+.itemGrid:nth-child(3n) {
+    background-color: var(--ungu1);
+    color: var(--ungu);
+}
