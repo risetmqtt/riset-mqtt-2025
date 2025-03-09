@@ -8,11 +8,7 @@ export async function GET(
     try {
         const token = (await cookies()).get("token")?.value;
         const response = await fetch(
-            `${process.env.BACKEND_URL}/backend/sensor/userlain/${
-                (
-                    await params
-                ).id
-            }`,
+            `${process.env.BACKEND_URL}/sensor/userlain/${(await params).id}`,
             {
                 method: "GET",
                 headers: {
@@ -35,11 +31,7 @@ export async function POST(
         const body = await req.json();
         const token = (await cookies()).get("token")?.value;
         const response = await fetch(
-            `${process.env.BACKEND_URL}/backend/sensor/userlain/${
-                (
-                    await params
-                ).id
-            }`,
+            `${process.env.BACKEND_URL}/sensor/userlain/${(await params).id}`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
