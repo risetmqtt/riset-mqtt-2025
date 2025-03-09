@@ -7,7 +7,6 @@ import { CiMenuKebab } from "react-icons/ci";
 import { MdChevronLeft } from "react-icons/md";
 
 interface IMenu {
-    /* eslint-disable @typescript-eslint/no-explicit-any */
     teks: string;
     url: string;
 }

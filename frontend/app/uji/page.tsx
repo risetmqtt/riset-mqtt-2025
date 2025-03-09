@@ -16,17 +16,17 @@ interface ISensor {
     }[];
 }
 
-interface IData {
-    waktu: number;
-    nilai?: number;
-    celcius?: number;
-}
+// interface IData {
+//     waktu: number;
+//     nilai?: number;
+//     celcius?: number;
+// }
 
 export default function Dashboard() {
     const router = useRouter();
     const [sensor, setSensor] = useState<ISensor[]>([]);
     const [loading, setLoading] = useState("Loading...");
-    const [data, setData] = useState<IData[]>();
+    // const [data, setData] = useState<IData[]>();
     const [socket, setSocket] = useState<WebSocket | null>(null);
 
     useEffect(() => {
@@ -52,6 +52,7 @@ export default function Dashboard() {
         return () => {
             newWs.close();
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleChange = (

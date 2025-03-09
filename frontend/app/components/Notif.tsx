@@ -1,9 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-
 interface iNotif {
-    /* eslint-disable @typescript-eslint/no-explicit-any */
     show: boolean;
     teks: string;
 }

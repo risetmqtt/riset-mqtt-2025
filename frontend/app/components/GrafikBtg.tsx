@@ -33,6 +33,7 @@ const GrafikBtg: React.FC<GrafikBtgProps> = ({ data, warna, limit = 20 }) => {
             }
         });
         setBatasAtas(batasnya);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data]);
 
     const hitungHeight = (datanya: IData) => {

@@ -25,7 +25,7 @@ export default function Dashboard() {
     const router = useRouter();
     const [sensor, setSensor] = useState<ISensor[]>([]);
     const [loading, setLoading] = useState("Loading...");
-    const [socket, setSocket] = useState<WebSocket | null>(null);
+    // const [socket, setSocket] = useState<WebSocket | null>(null);
 
     useEffect(() => {
         async function fetchSensor() {
@@ -34,7 +34,7 @@ export default function Dashboard() {
             if (res.status == 401) return router.replace("/");
             if (res.status != 200) return setLoading(resJson.pesan);
             setSensor(
-                resJson.map((r: ISensor, i: number) => {
+                resJson.map((r: ISensor) => {
                     const { current_value, batas_atas } =
                         hitungCurrentValueDanBatasAtas(r.data);
                     return {
@@ -51,7 +51,7 @@ export default function Dashboard() {
         const newWs = new WebSocket(`${process.env.NEXT_PUBLIC_WEBSOCKET_URL}`);
         newWs.onopen = () => {
             console.log("Websocket berhasil terkoneksi");
-            setSocket(newWs);
+            // setSocket(newWs);
         };
         newWs.onerror = (err) => {
             console.error("WebSocket eror : " + err);
@@ -59,7 +59,7 @@ export default function Dashboard() {
         newWs.onmessage = (event) => {
             const datanya = JSON.parse(event.data);
             setSensor((prevSensor) =>
-                prevSensor.map((s, i) => {
+                prevSensor.map((s) => {
                     const { current_value, batas_atas } =
                         hitungCurrentValueDanBatasAtas(s.data);
                     return s.id === datanya.id
@@ -87,6 +87,7 @@ export default function Dashboard() {
         return () => {
             newWs.close();
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const hitungCurrentValueDanBatasAtas = (data: IDataSensor[]) => {
