@@ -5,6 +5,14 @@ const app = express();
 const port = 8082;
 const authRoute = require("./routes/auth.route.js");
 const sensorRoute = require("./routes/sensor.route.js");
+const mysql = require("mysql2");
+const connection = mysql.createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_DATABASE,
+    dateStrings: true,
+});
 
 app.use(cors());
 app.use(express.json());
@@ -52,11 +60,50 @@ server.on("connection", (socket, req) => {
                 waktu: Date.now(),
             };
             console.log(datanya);
-            sensors[idsensor].forEach((client) => {
-                if (client !== socket && client.readyState === WebSocket.OPEN) {
-                    client.send(JSON.stringify(datanya)); // Kirim pesan ke semua klien
+
+            async function postData() {
+                try {
+                    const sensorSelected = await connection.promise().query(`
+                        SELECT * FROM sensor WHERE sensor.id = '${idsensor}'`);
+                    if (sensorSelected[0].length == 0)
+                        return console.log(`Sensor : ${idsensor}`);
+                    let dataCur = JSON.parse(sensorSelected[0][0].data);
+                    dataCur.push({
+                        waktu: datanya.waktu,
+                        nilai: datanya.nilai,
+                    });
+                    await connection
+                        .promise()
+                        .query(
+                            `UPDATE sensor set data = ? WHERE id = '${idsensor}';`,
+                            [JSON.stringify(dataCur)]
+                        );
+
+                    sensors[idsensor].forEach((client) => {
+                        if (
+                            client !== socket &&
+                            client.readyState === WebSocket.OPEN
+                        ) {
+                            client.send(JSON.stringify(datanya)); // Kirim pesan ke semua klien
+                        }
+                    });
+                } catch (error) {
+                    console.error(error.message);
+                    sensors[idsensor].forEach((client) => {
+                        if (
+                            client !== socket &&
+                            client.readyState === WebSocket.OPEN
+                        ) {
+                            client.send(
+                                JSON.stringify({
+                                    pesan: "Terjadi kesalahan pada server websocket",
+                                })
+                            ); // Kirim pesan ke semua klien
+                        }
+                    });
                 }
-            });
+            }
+            postData();
         } catch (error) {
             console.log(error.message);
         }

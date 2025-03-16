@@ -4,7 +4,6 @@ import NavAtas from "../components/NavAtas";
 import NavBawah from "../components/NavBawah";
 import styles from "./dashboard.module.css";
 import { useRouter } from "next/navigation";
-import GrafikBtg from "../components/GrafikBtg";
 import SensorDashboard from "./Sensor";
 
 interface IDataSensor {

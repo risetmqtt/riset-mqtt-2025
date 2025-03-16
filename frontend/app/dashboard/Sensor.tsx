@@ -47,6 +47,10 @@ const SensorDashboard: React.FC<SensorProps> = ({ sensor, ind_sensor }) => {
         };
         newWs.onmessage = (event) => {
             const datanya = JSON.parse(event.data);
+            if (datanya.pesan) {
+                console.error(datanya.pesan);
+                return;
+            }
             setSensorCur((prev) => {
                 const { current_value, batas_atas } =
                     hitungCurrentValueDanBatasAtas([

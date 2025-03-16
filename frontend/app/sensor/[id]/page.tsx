@@ -9,8 +9,7 @@ import { FiUser } from "react-icons/fi";
 
 interface IDataSensor {
     waktu: number;
-    nilai?: number;
-    celcius?: number;
+    nilai: number;
 }
 
 interface ISensor {
@@ -51,11 +50,7 @@ export default function Sensor({
     const hitungCurrentValue = (data: IDataSensor[]) => {
         let current_value = 0;
         if (data.length > 0) {
-            if (data[0].nilai) {
-                current_value = Number(data[data.length - 1].nilai);
-            } else if (data[0].celcius) {
-                current_value = Number(data[data.length - 1].celcius);
-            }
+            current_value = Number(data[data.length - 1].nilai);
         }
         return current_value;
     };
@@ -63,6 +58,7 @@ export default function Sensor({
     useEffect(() => {
         async function fetchData() {
             const respoonse = await fetch(`/api/sensor/${(await params).id}`);
+
             const resJson = await respoonse.json();
             if (respoonse.status == 401) return router.replace("/");
             if (respoonse.status != 200) return setLoading(resJson.pesan);
@@ -80,39 +76,53 @@ export default function Sensor({
         }
         fetchData();
 
-        const newWs = new WebSocket(`${process.env.NEXT_PUBLIC_WEBSOCKET_URL}`);
-        newWs.onopen = () => {
-            setSocket(newWs);
-        };
-        newWs.onerror = (err) => {
-            console.log("WebSocket eror : ");
-            console.log(err);
-        };
-        newWs.onmessage = (event) => {
-            const datanya = JSON.parse(event.data);
-            if (datanya.id == sensor.id) {
-                const current_value = hitungCurrentValue(sensor.data);
-                setSensor({
-                    ...sensor,
-                    data: [
-                        ...sensor.data,
-                        sensor.id_struktur == 1
-                            ? {
-                                  waktu: datanya.waktu,
-                                  nilai: datanya.nilai,
-                              }
-                            : {
-                                  waktu: datanya.waktu,
-                                  celcius: datanya.nilai,
-                              },
-                    ],
-                    current_value,
+        async function inisialisasiWebsocket() {
+            const idParam = (await params).id;
+            const newWs = new WebSocket(
+                `${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/?idsensor=${idParam}`
+            );
+            newWs.onopen = () => {
+                console.log(
+                    `Websocket berhasil terkoneksi di sensor ${idParam}`
+                );
+                setSocket(newWs);
+            };
+            newWs.onerror = (err) => {
+                console.error(`WebSocket eror di sensor ${idParam} : ` + err);
+                console.log(err);
+            };
+            newWs.onmessage = (event) => {
+                const datanya = JSON.parse(event.data);
+                if (datanya.pesan) {
+                    console.error(datanya.pesan);
+                    return;
+                }
+                setSensor((prev) => {
+                    const current_value = hitungCurrentValue([
+                        ...prev.data,
+                        {
+                            waktu: datanya.waktu,
+                            nilai: datanya.nilai,
+                        },
+                    ]);
+                    return {
+                        ...prev,
+                        data: [
+                            ...prev.data,
+                            {
+                                waktu: datanya.waktu,
+                                nilai: datanya.nilai,
+                            },
+                        ],
+                        current_value,
+                    };
                 });
-            }
-        };
-        return () => {
-            newWs.close();
-        };
+            };
+            return () => {
+                newWs.close();
+            };
+        }
+        inisialisasiWebsocket();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
