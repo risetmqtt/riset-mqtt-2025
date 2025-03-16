@@ -5,11 +5,11 @@ import NavBawah from "../components/NavBawah";
 import styles from "./dashboard.module.css";
 import { useRouter } from "next/navigation";
 import GrafikBtg from "../components/GrafikBtg";
+import SensorDashboard from "./Sensor";
 
 interface IDataSensor {
     waktu: number;
-    nilai?: number;
-    celcius?: number;
+    nilai: number;
 }
 
 interface ISensor {
@@ -47,46 +47,6 @@ export default function Dashboard() {
             setLoading("");
         }
         fetchSensor();
-
-        const newWs = new WebSocket(`${process.env.NEXT_PUBLIC_WEBSOCKET_URL}`);
-        newWs.onopen = () => {
-            console.log("Websocket berhasil terkoneksi");
-            // setSocket(newWs);
-        };
-        newWs.onerror = (err) => {
-            console.error("WebSocket eror : " + err);
-        };
-        newWs.onmessage = (event) => {
-            const datanya = JSON.parse(event.data);
-            setSensor((prevSensor) =>
-                prevSensor.map((s) => {
-                    const { current_value, batas_atas } =
-                        hitungCurrentValueDanBatasAtas(s.data);
-                    return s.id === datanya.id
-                        ? {
-                              ...s,
-                              data: [
-                                  ...s.data,
-                                  s.id_struktur == 1
-                                      ? {
-                                            waktu: datanya.waktu,
-                                            nilai: datanya.nilai,
-                                        }
-                                      : {
-                                            waktu: datanya.waktu,
-                                            celcius: datanya.nilai,
-                                        },
-                              ],
-                              current_value,
-                              batas_atas,
-                          }
-                        : s;
-                })
-            );
-        };
-        return () => {
-            newWs.close();
-        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -94,39 +54,18 @@ export default function Dashboard() {
         let current_value = 0;
         let batas_atas = 0;
         if (data.length > 0) {
-            if (data[0].nilai) {
-                current_value = Number(data[data.length - 1].nilai);
-            } else if (data[0].celcius) {
-                current_value = Number(data[data.length - 1].celcius);
-            }
+            current_value = Number(data[data.length - 1].nilai);
         }
         data.forEach((e) => {
-            if (e.nilai) {
-                batas_atas = e.nilai > batas_atas ? e.nilai : batas_atas;
-            } else if (e.celcius) {
-                batas_atas = e.celcius > batas_atas ? e.celcius : batas_atas;
-            }
+            batas_atas = e.nilai > batas_atas ? e.nilai : batas_atas;
         });
         return { current_value, batas_atas };
     };
 
     useEffect(() => {
-        console.log("Sensor : ");
+        console.log("Sensor page.tsx : ");
         console.log(sensor);
     }, [sensor]);
-
-    const generateWarna = (index: number) => {
-        switch (index % 3) {
-            case 0:
-                return "bg-hijau";
-            case 1:
-                return "bg-coklat";
-            case 2:
-                return "bg-ungu";
-            default:
-                return "";
-        }
-    };
 
     return (
         <>
@@ -156,33 +95,11 @@ export default function Dashboard() {
                 ) : (
                     <div className={styles.grid}>
                         {sensor.map((s, ind_s) => (
-                            <div
-                                onClick={() => {
-                                    router.push(`/sensor/${s.id}`);
-                                }}
+                            <SensorDashboard
                                 key={ind_s}
-                                className={styles.itemGrid + " p-5"}
-                            >
-                                <p>ID : {s.id}</p>
-                                <div
-                                    style={{ flex: 1 }}
-                                    className="w-full my-2"
-                                >
-                                    <GrafikBtg
-                                        warna={generateWarna(ind_s)}
-                                        data={s.data}
-                                    />
-                                </div>
-                                <p className="font-bold text-hitam">
-                                    {s.label}
-                                </p>
-                                <p className="text-sm">
-                                    Currect value : {s.current_value}
-                                </p>
-                                <p className="text-sm">
-                                    Batas atas : {s.batas_atas}
-                                </p>
-                            </div>
+                                sensor={s}
+                                ind_sensor={ind_s}
+                            />
                         ))}
                     </div>
                 )}

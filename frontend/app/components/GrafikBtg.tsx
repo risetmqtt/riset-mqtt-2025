@@ -5,8 +5,7 @@ import styles from "./grafikbtg.module.css";
 
 interface IData {
     waktu: number;
-    nilai?: number;
-    celcius?: number;
+    nilai: number;
 }
 
 interface GrafikBtgProps {
@@ -19,31 +18,20 @@ const GrafikBtg: React.FC<GrafikBtgProps> = ({ data, warna, limit = 20 }) => {
     const [datanya, setDatanya] = useState<IData[]>([]);
     const [batasAtas, setBatasAtas] = useState(0);
     useEffect(() => {
-        console.log("cek ini dari grafik btg");
         const dataFilter = data.filter((e, ind_e) => {
             return ind_e >= data.length - limit;
         });
         setDatanya(dataFilter);
         let batasnya = 0;
         dataFilter.forEach((e) => {
-            if (e.nilai) {
-                batasnya = e.nilai > batasnya ? e.nilai : batasnya;
-            } else if (e.celcius) {
-                batasnya = e.celcius > batasnya ? e.celcius : batasnya;
-            }
+            batasnya = e.nilai > batasnya ? e.nilai : batasnya;
         });
         setBatasAtas(batasnya);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data]);
 
     const hitungHeight = (datanya: IData) => {
-        if (datanya.nilai) {
-            return `${(datanya.nilai / batasAtas) * 100}%`;
-        }
-        if (datanya.celcius) {
-            return `${(datanya.celcius / batasAtas) * 100}%`;
-        }
-        return "";
+        return `${(datanya.nilai / batasAtas) * 100}%`;
     };
     return (
         <div

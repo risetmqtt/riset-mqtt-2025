@@ -24,21 +24,37 @@ app.listen(port, "0.0.0.0", () => {
 // ===================================================
 
 const WebSocket = require("ws");
+const { parse } = require("url");
 const server = new WebSocket.Server({ port: 4002 });
+const sensors = {};
+server.on("connection", (socket, req) => {
+    const { query } = parse(req.url, true);
+    const idsensor = query.idsensor;
 
-server.on("connection", (socket) => {
-    console.log("Client connected");
+    if (!idsensor) {
+        server.close(1008, "idsensor is required");
+        return;
+    }
+
+    //kalau idsensornya blm ada
+    if (!sensors[idsensor]) {
+        sensors[idsensor] = new Set();
+    }
+
+    sensors[idsensor].add(socket);
+    console.log(`Client telah terkoneksi ke sensor ${idsensor}`);
 
     socket.on("message", (message) => {
         try {
-            const textMessage = message.toString();
-            const data = JSON.parse(textMessage);
-            console.log("Received: ");
-            console.log(data);
-
-            server.clients.forEach((client) => {
-                if (client.readyState === WebSocket.OPEN) {
-                    client.send(textMessage); // Kirim pesan ke semua klien
+            const datanya = {
+                idsensor: idsensor,
+                nilai: Number(message),
+                waktu: Date.now(),
+            };
+            console.log(datanya);
+            sensors[idsensor].forEach((client) => {
+                if (client !== socket && client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify(datanya)); // Kirim pesan ke semua klien
                 }
             });
         } catch (error) {
@@ -47,8 +63,14 @@ server.on("connection", (socket) => {
     });
 
     socket.on("close", () => {
-        console.log("Client disconnected");
+        sensors[idsensor].delete(socket);
+        console.log(`Client left sensor ${idsensor}`);
+
+        if (sensors[idsensor].size === 0) {
+            delete sensors[idsensor];
+        }
     });
 });
 
 console.log("WebSocket server running on ws://localhost:4002");
+3;

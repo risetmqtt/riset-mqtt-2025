@@ -34,7 +34,11 @@ const getAll = async (req, res) => {
         const data = await connection.promise().query(query);
         let dataFix = [];
         data[0].forEach((d) => {
-            const elm = { ...d, data: JSON.parse(d.data) };
+            const elm = {
+                ...d,
+                data: JSON.parse(d.data),
+                id_user_lain: JSON.parse(d.id_user_lain),
+            };
             dataFix.push(elm);
         });
         if (idSensor) {
@@ -88,9 +92,11 @@ const postSensor = async (req, res) => {
             .promise()
             .query(`SELECT sensor.id FROM sensor ORDER BY id DESC;`);
         let dataTerakhir = "00001";
-        dataTerakhir = ("0000" + (Number(fetchTerakhir[0][0].id) + 1)).slice(
-            -5
-        );
+        if (fetchTerakhir[0].length > 0)
+            dataTerakhir = (
+                "0000" +
+                (Number(fetchTerakhir[0][0].id) + 1)
+            ).slice(-5);
         await connection
             .promise()
             .query(
@@ -112,33 +118,14 @@ const postSensor = async (req, res) => {
 const postData = async (req, res) => {
     try {
         const idSensor = req.params.id;
+        const { waktu, nilai } = req.body;
         const sensorSelected = await connection.promise().query(`
-                SELECT 
-                    sensor.*,
-                    struktur_data.struktur 
-                FROM sensor 
-                JOIN struktur_data ON sensor.id_struktur = struktur_data.id 
-                WHERE sensor.id = '${idSensor}'`);
+                SELECT * FROM sensor WHERE sensor.id = '${idSensor}'`);
         if (sensorSelected[0].length == 0)
             return res.status(400).json({ pesan: "Sensor tidak ditemukan" });
 
-        const strukturData = JSON.parse(sensorSelected[0][0].struktur);
         let dataCur = JSON.parse(sensorSelected[0][0].data);
-        const waktu = new Date().getTime();
-        let databaru = {};
-        let parameterKurang = false;
-        strukturData.forEach((s) => {
-            if (s == "waktu") {
-                databaru[s] = waktu;
-            } else {
-                if (!req.body[s])
-                    parameterKurang = `Parameter ${s} belum diberikan`;
-                databaru[s] = Number(req.body[s]);
-            }
-        });
-        if (parameterKurang)
-            return res.status(400).json({ pesan: parameterKurang });
-        dataCur.push(databaru);
+        dataCur.push({ waktu, nilai });
         await connection
             .promise()
             .query(`UPDATE sensor set data = ? WHERE id = '${idSensor}';`, [

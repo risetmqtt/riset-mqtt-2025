@@ -12,6 +12,7 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({ email, sandi }),
     });
+    
     const responseLogin = await fetchLogin.json();
 
     if (fetchLogin.status !== 200) {

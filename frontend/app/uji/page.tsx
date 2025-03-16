@@ -27,7 +27,7 @@ export default function Dashboard() {
     const [sensor, setSensor] = useState<ISensor[]>([]);
     const [loading, setLoading] = useState("Loading...");
     // const [data, setData] = useState<IData[]>();
-    const [socket, setSocket] = useState<WebSocket | null>(null);
+    const [socket, setSocket] = useState<WebSocket[] | null[]>([]);
 
     useEffect(() => {
         async function fetchSensor() {
@@ -36,22 +36,26 @@ export default function Dashboard() {
             if (res.status == 401) return router.replace("/");
             if (res.status != 200) return setLoading(resJson.pesan);
             console.log(resJson);
+            const newWsDum = [] as WebSocket[];
+            resJson.forEach((s: ISensor, ind_s: number) => {
+                newWsDum[ind_s] = new WebSocket(
+                    `${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/?idsensor=${s.id}`
+                );
+                newWsDum[ind_s].onopen = () => {
+                    console.log("Websocket berhasil terkoneksi 00001");
+                };
+                newWsDum[ind_s].onerror = (err) => {
+                    console.error("WebSocket eror : " + err);
+                };
+                return () => {
+                    newWsDum[ind_s].close();
+                };
+            });
+            setSocket(newWsDum);
             setSensor(resJson);
             setLoading("");
         }
         fetchSensor();
-
-        const newWs = new WebSocket(`${process.env.NEXT_PUBLIC_WEBSOCKET_URL}`);
-        newWs.onopen = () => {
-            console.log("Websocket berhasil terkoneksi");
-            setSocket(newWs);
-        };
-        newWs.onerror = (err) => {
-            console.error("WebSocket eror : " + err);
-        };
-        return () => {
-            newWs.close();
-        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -59,14 +63,8 @@ export default function Dashboard() {
         index: number,
         e: React.ChangeEvent<HTMLInputElement>
     ) => {
-        if (socket && socket.readyState === WebSocket.OPEN) {
-            socket.send(
-                JSON.stringify({
-                    id: sensor[index].id,
-                    waktu: Date.now(),
-                    nilai: Number(e.target.value),
-                })
-            );
+        if (socket[index] && socket[index].readyState === WebSocket.OPEN) {
+            socket[index].send(e.target.value);
         } else {
             console.warn("WebSocket belum siap atau tidak tersedia.");
         }

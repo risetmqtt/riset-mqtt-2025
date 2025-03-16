@@ -22,6 +22,7 @@ export default function Login() {
 
     const handleSubmit = (e: SyntheticEvent) => {
         e.preventDefault();
+        console.log(formData);
         async function funFetchLogin() {
             const response = await fetch("/api/login", {
                 method: "POST",
