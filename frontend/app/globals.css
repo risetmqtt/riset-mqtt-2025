@@ -12,6 +12,7 @@
     --coklat: #c2906f;
     --coklat1: #f8ede7;
     --merah: #fe4e50;
+    --merah1: #ffd4d5;
 }
 
 /* width */
@@ -77,6 +78,9 @@ h2 {
 .bg-ungu {
     background-color: var(--ungu);
 }
+.bg-ungu1 {
+    background-color: var(--ungu1);
+}
 .text-ungu {
     color: var(--ungu);
 }
@@ -98,11 +102,23 @@ h2 {
 .text-coklat {
     color: var(--coklat);
 }
+.bg-coklat1 {
+    background-color: var(--coklat1);
+}
+.text-coklat1 {
+    color: var(--coklat1);
+}
 .bg-merah {
     background-color: var(--merah);
 }
 .text-merah {
     color: var(--merah);
+}
+.bg-merah1 {
+    background-color: var(--merah1);
+}
+.text-merah1 {
+    color: var(--merah1);
 }
 
 .input-icon {
@@ -112,12 +128,14 @@ h2 {
     border-bottom: 1px solid var(--abu);
     padding-block: 0.5em;
 }
-.input-icon input {
+.input-icon input,
+.input-icon select {
     background: none;
     flex: 1;
     width: 100%;
 }
-.input-icon input:focus {
+.input-icon input:focus,
+.input-icon select:focus {
     outline: none;
     border: none;
 }
@@ -163,6 +181,7 @@ h2 {
     position: relative;
     transform: translate(100vw, 30px);
     transition: 0.5s;
+    max-width: 300px;
 }
 .notif.show > div {
     transform: translate(-20px, 30px);

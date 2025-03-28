@@ -5,6 +5,7 @@ const app = express();
 const port = 8082;
 const authRoute = require("./routes/auth.route.js");
 const sensorRoute = require("./routes/sensor.route.js");
+const satuanRoute = require("./routes/satuan.route.js");
 const mysql = require("mysql2");
 const connection = mysql.createPool({
     host: process.env.DB_HOST,
@@ -24,6 +25,7 @@ app.get("/backend/", (req, res) => {
 // routes
 app.use("/backend/auth", authRoute);
 app.use("/backend/sensor", sensorRoute);
+app.use("/backend/satuan", satuanRoute);
 
 app.listen(port, "0.0.0.0", () => {
     console.log(`Backend IOT app listening on port ${port}`);
@@ -37,7 +39,7 @@ const server = new WebSocket.Server({ port: 4002 });
 const sensors = {};
 server.on("connection", (socket, req) => {
     const { query } = parse(req.url, true);
-    const idsensor = query.idsensor;
+    const idsensor = query.idsensor ? query.idsensor : "XXXXX";
 
     if (!idsensor) {
         server.close(1008, "idsensor is required");

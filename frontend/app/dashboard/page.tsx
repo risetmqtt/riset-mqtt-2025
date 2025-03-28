@@ -5,6 +5,9 @@ import NavBawah from "../components/NavBawah";
 import styles from "./dashboard.module.css";
 import { useRouter } from "next/navigation";
 import SensorDashboard from "./Sensor";
+import useNotifStore from "@/store/notifStore";
+import Notif from "../components/Notif";
+import useUserStore from "@/store/userStore";
 
 interface IDataSensor {
     waktu: number;
@@ -17,13 +20,19 @@ interface ISensor {
     id_struktur: number;
     data: IDataSensor[];
     current_value: number;
+    batas_bawah: number;
     batas_atas: number;
+    satuan: string;
 }
+
+const limitData = 20;
 
 export default function Dashboard() {
     const router = useRouter();
     const [sensor, setSensor] = useState<ISensor[]>([]);
     const [loading, setLoading] = useState("Loading...");
+    const { notifShow, notifText } = useNotifStore();
+    const { emailUser } = useUserStore();
     // const [socket, setSocket] = useState<WebSocket | null>(null);
 
     useEffect(() => {
@@ -32,59 +41,35 @@ export default function Dashboard() {
             const resJson = await res.json();
             if (res.status == 401) return router.replace("/");
             if (res.status != 200) return setLoading(resJson.pesan);
-            setSensor(
-                resJson.map((r: ISensor) => {
-                    const { current_value, batas_atas } =
-                        hitungCurrentValueDanBatasAtas(r.data);
-                    return {
-                        ...r,
-                        current_value,
-                        batas_atas,
-                    };
-                })
-            );
+            console.log("Sensor page.tsx : ");
+            console.log(resJson);
+            setSensor(resJson);
             setLoading("");
         }
         fetchSensor();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const hitungCurrentValueDanBatasAtas = (data: IDataSensor[]) => {
-        let current_value = 0;
-        let batas_atas = 0;
-        if (data.length > 0) {
-            current_value = Number(data[data.length - 1].nilai);
-        }
-        data.forEach((e) => {
-            batas_atas = e.nilai > batas_atas ? e.nilai : batas_atas;
-        });
-        return { current_value, batas_atas };
-    };
-
-    useEffect(() => {
-        console.log("Sensor page.tsx : ");
-        console.log(sensor);
-    }, [sensor]);
-
     return (
         <>
+            <Notif show={notifShow} teks={notifText} />
             <NavAtas
-                title="Hai, Galih!"
+                title={`Hai, ${emailUser?.split("@")[0]}`}
                 subtitle="Dashboard"
-                menu={[
-                    {
-                        url: "/",
-                        teks: "Tambah",
-                    },
-                    {
-                        url: "/",
-                        teks: "Tambah AWdwqdw",
-                    },
-                    {
-                        url: "/",
-                        teks: "Tambah AWdwqdw",
-                    },
-                ]}
+                // menu={[
+                //     {
+                //         url: "/",
+                //         teks: "Tambah",
+                //     },
+                //     {
+                //         url: "/",
+                //         teks: "Tambah AWdwqdw",
+                //     },
+                //     {
+                //         url: "/",
+                //         teks: "Tambah AWdwqdw",
+                //     },
+                // ]}
             />
             <div className="konten px-6 pb-6">
                 {loading ? (
@@ -98,6 +83,7 @@ export default function Dashboard() {
                                 key={ind_s}
                                 sensor={s}
                                 ind_sensor={ind_s}
+                                limit={limitData}
                             />
                         ))}
                     </div>

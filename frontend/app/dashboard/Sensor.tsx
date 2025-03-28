@@ -1,11 +1,13 @@
 import { useRouter } from "next/navigation";
 import styles from "./dashboard.module.css";
 import GrafikBtg from "../components/GrafikBtg";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import useWebSocketStore from "@/store/websocketStore";
 
 interface SensorProps {
     sensor: ISensor;
     ind_sensor: number;
+    limit: number;
 }
 interface IDataSensor {
     waktu: number;
@@ -18,67 +20,25 @@ interface ISensor {
     data: IDataSensor[];
     current_value: number;
     batas_atas: number;
+    batas_bawah: number;
+    satuan: string;
 }
-const SensorDashboard: React.FC<SensorProps> = ({ sensor, ind_sensor }) => {
+const SensorDashboard: React.FC<SensorProps> = ({
+    sensor,
+    ind_sensor,
+    limit,
+}) => {
     const router = useRouter();
-    const [sensorCur, setSensorCur] = useState<ISensor>(sensor);
-
-    const hitungCurrentValueDanBatasAtas = (data: IDataSensor[]) => {
-        let current_value = 0;
-        let batas_atas = 0;
-        if (data.length > 0) {
-            current_value = Number(data[data.length - 1].nilai);
-        }
-        data.forEach((e) => {
-            batas_atas = e.nilai > batas_atas ? e.nilai : batas_atas;
-        });
-        return { current_value, batas_atas };
-    };
+    const { connectWebSocket, disconnectWebSocket, sensorData } =
+        useWebSocketStore();
 
     useEffect(() => {
-        const newWs = new WebSocket(
-            `${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/?idsensor=${sensor.id}`
-        );
-        newWs.onopen = () => {
-            console.log(`Websocket berhasil terkoneksi di sensor ${sensor.id}`);
-        };
-        newWs.onerror = (err) => {
-            console.error(`WebSocket eror di sensor ${sensor.id} : ` + err);
-        };
-        newWs.onmessage = (event) => {
-            const datanya = JSON.parse(event.data);
-            if (datanya.pesan) {
-                console.error(datanya.pesan);
-                return;
-            }
-            setSensorCur((prev) => {
-                const { current_value, batas_atas } =
-                    hitungCurrentValueDanBatasAtas([
-                        ...prev.data,
-                        {
-                            waktu: datanya.waktu,
-                            nilai: datanya.nilai,
-                        },
-                    ]);
-                return {
-                    ...prev,
-                    data: [
-                        ...prev.data,
-                        {
-                            waktu: datanya.waktu,
-                            nilai: datanya.nilai,
-                        },
-                    ],
-                    current_value,
-                    batas_atas,
-                };
-            });
-        };
+        connectWebSocket(sensor, limit);
         return () => {
-            newWs.close();
+            disconnectWebSocket(sensor);
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [sensor.id, connectWebSocket, disconnectWebSocket]);
 
     const generateWarna = (index: number) => {
         switch (index % 3) {
@@ -93,29 +53,38 @@ const SensorDashboard: React.FC<SensorProps> = ({ sensor, ind_sensor }) => {
         }
     };
 
-    useEffect(() => {
-        console.log("Sensor Sensor.tsx : ");
-        console.log(sensorCur);
-    }, [sensorCur]);
-
     return (
-        <div
-            onClick={() => {
-                router.push(`/sensor/${sensorCur.id}`);
-            }}
-            className={styles.itemGrid + " p-5"}
-        >
-            <p>ID : {sensorCur.id}</p>
-            <div style={{ flex: 1 }} className="w-full my-2">
-                <GrafikBtg
-                    warna={generateWarna(ind_sensor)}
-                    data={sensorCur.data}
-                />
-            </div>
-            <p className="font-bold text-hitam">{sensorCur.label}</p>
-            <p className="text-sm">Currect value : {sensorCur.current_value}</p>
-            <p className="text-sm">Batas atas : {sensorCur.batas_atas}</p>
-        </div>
+        <>
+            {sensorData[sensor.id] ? (
+                <div
+                    onClick={() => {
+                        router.push(`/sensor/${sensor.id}`);
+                    }}
+                    className={styles.itemGrid + " p-5"}
+                >
+                    <p>ID : {sensor.id}</p>
+                    <div style={{ flex: 1 }} className="w-full my-2">
+                        <GrafikBtg
+                            warna={generateWarna(ind_sensor)}
+                            data={sensorData[sensor.id].data}
+                        />
+                    </div>
+                    <p className="font-bold text-hitam">{sensor.label}</p>
+                    <p className="text-sm">
+                        Currect value : {sensorData[sensor.id].current_value}
+                        {sensorData[sensor.id].satuan.split("@")[1]}
+                    </p>
+                    <p className="text-sm">
+                        Batas atas : {sensorData[sensor.id].batas_atas}
+                        {sensorData[sensor.id].satuan.split("@")[1]}
+                    </p>
+                </div>
+            ) : (
+                <p className="text-sm text-center">
+                    <i>Membuat socket client ...</i>
+                </p>
+            )}
+        </>
     );
 };
 

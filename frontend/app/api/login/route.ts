@@ -12,7 +12,7 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({ email, sandi }),
     });
-    
+
     const responseLogin = await fetchLogin.json();
 
     if (fetchLogin.status !== 200) {
@@ -26,13 +26,10 @@ export async function POST(req: Request) {
     }
 
     // Set token in cookies (this works in server context)
-    return NextResponse.json(
-        { token: responseLogin.token },
-        {
-            status: 200,
-            headers: {
-                "Set-Cookie": `token=${responseLogin.token}; HttpOnly; Path=/; Max-Age=86400`,
-            },
-        }
-    );
+    return NextResponse.json(responseLogin, {
+        status: 200,
+        headers: {
+            "Set-Cookie": `token=${responseLogin.token}; HttpOnly; Path=/; Max-Age=86400`,
+        },
+    });
 }

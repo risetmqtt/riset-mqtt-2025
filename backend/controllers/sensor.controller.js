@@ -12,25 +12,30 @@ const connection = mysql.createPool({
 
 const getAll = async (req, res) => {
     const iduser = req.user.id;
+    const emailuser = req.user.email;
     const idSensor = req.params.id;
     try {
         let query = "";
         if (idSensor)
             query = `
-        SELECT 
-            sensor.* ,
-            struktur_data.satuan 
+            SELECT 
+                sensor.* ,
+                struktur_data.satuan, 
+                user.email 
             FROM sensor 
             JOIN struktur_data ON sensor.id_struktur = struktur_data.id 
+            JOIN user ON sensor.id_user = user.id
             WHERE sensor.id = '${idSensor}'`;
         else
             query = `
             SELECT 
                 sensor.*,
-                struktur_data.satuan 
+                struktur_data.satuan, 
+                user.email 
             FROM sensor 
             JOIN struktur_data ON sensor.id_struktur = struktur_data.id 
-            WHERE sensor.id_user = '${iduser}'`;
+            JOIN user ON sensor.id_user = user.id
+            WHERE sensor.id_user = '${iduser}' OR sensor.id_user_lain LIKE '%${emailuser}%'`;
         const data = await connection.promise().query(query);
         let dataFix = [];
         data[0].forEach((d) => {
@@ -68,7 +73,7 @@ const getUserLain = async (req, res) => {
             const idUser = idUserLain[i];
             const user = await connection
                 .promise()
-                .query(`SELECT * FROM user WHERE id = '${idUser}'`);
+                .query(`SELECT * FROM user WHERE email = '${idUser}'`);
             if (user[0].length > 0) {
                 users.push({
                     id: user[0][0].id,
@@ -81,11 +86,46 @@ const getUserLain = async (req, res) => {
         res.status(500).json({ pesan: error.message });
     }
 };
+const postUserLain = async (req, res) => {
+    const idSensor = req.params.id;
+    const idUser = req.user.id;
+    const emailUser = req.user.email;
+    try {
+        const data = await connection.promise().query(`
+            SELECT * FROM sensor WHERE id = '${idSensor}'`);
+        if (data[0].length == 0) {
+            return res.status(400).json({ pesan: "Sensor tidak ditemukan" });
+        }
+        if (data[0][0].id_user == idUser) {
+            return res
+                .status(400)
+                .json({ pesan: "Anda sudah pernah menambahkan" });
+        }
+        const idUserLain = JSON.parse(data[0][0].id_user_lain);
+        if (idUserLain.includes(String(emailUser))) {
+            return res
+                .status(400)
+                .json({ pesan: "Anda sudah pernah menambahkan" });
+        }
+        idUserLain.push(String(emailUser));
+        await connection
+            .promise()
+            .query(
+                `UPDATE sensor set id_user_lain = ? WHERE id = '${idSensor}';`,
+                [JSON.stringify(idUserLain)]
+            );
+        res.status(200).json({
+            pesan: `Sensor berhasil ditambahkan`,
+        });
+    } catch (error) {
+        res.status(500).json({ pesan: error.message });
+    }
+};
 
 const postSensor = async (req, res) => {
     const idUser = req.user.id;
     try {
-        const { label, id_struktur } = req.body;
+        const { label, satuan: id_struktur } = req.body;
         if (!label || !id_struktur)
             return res.status(400).json({ pesan: "Parameter tidak lengkap" });
         const fetchTerakhir = await connection
@@ -138,4 +178,4 @@ const postData = async (req, res) => {
         res.status(500).json({ pesan: error.message });
     }
 };
-module.exports = { getAll, postSensor, postData, getUserLain };
+module.exports = { getAll, postSensor, postData, getUserLain, postUserLain };

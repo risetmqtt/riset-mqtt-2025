@@ -7,6 +7,8 @@ import { IoEyeOffOutline, IoEyeOutline } from "react-icons/io5";
 import { MdOutlineEmail } from "react-icons/md";
 import { TbLockPassword } from "react-icons/tb";
 import Notif from "./components/Notif";
+import useNotifStore from "@/store/notifStore";
+import useUserStore from "@/store/userStore";
 
 export default function Login() {
     const router = useRouter();
@@ -14,11 +16,9 @@ export default function Login() {
         email: "",
         sandi: "",
     });
-    const [notif, setNotif] = useState({
-        show: false,
-        teks: "cekcke",
-    });
+    const { notifShow, notifText, showNotification } = useNotifStore();
     const [eyePass, setEyePass] = useState(false);
+    const { setUser } = useUserStore();
 
     const handleSubmit = (e: SyntheticEvent) => {
         e.preventDefault();
@@ -33,12 +33,10 @@ export default function Login() {
             });
             const result = await response.json();
             if (response.status !== 200) {
-                setNotif({ show: true, teks: result.pesan });
-                setTimeout(() => {
-                    setNotif({ ...notif, show: false });
-                }, 3000);
+                showNotification(result.pesan);
                 return;
             }
+            setUser(String(result.idUser), result.emailUser);
             router.push("/dashboard");
         }
         funFetchLogin();
@@ -46,7 +44,7 @@ export default function Login() {
 
     return (
         <>
-            <Notif show={notif.show} teks={notif.teks} />
+            <Notif show={notifShow} teks={notifText} />
             <div className="flex flex-col p-10" style={{ height: "100%" }}>
                 <div
                     style={{ flex: "1" }}
