@@ -62,10 +62,10 @@ const signup = async (req, res) => {
             }
             await connection
                 .promise()
-                .query(`INSERT INTO user (email, sandi) VALUES (?,?)`, [
-                    email,
-                    hash,
-                ]);
+                .query(
+                    `INSERT INTO user (email, sandi, passkey) VALUES (?,?,?)`,
+                    [email, hash, ""]
+                );
             res.status(200).json({ pesan: "Akun berhasil dibuat" });
         });
     } catch (error) {
