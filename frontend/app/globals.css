@@ -201,3 +201,36 @@ h2 {
     top: 90px;
     transition: 0.5s;
 }
+
+.toast {
+    position: fixed;
+    top: -50svh;
+    left: 0;
+    width: 100vw;
+    /* height: 0; */
+    z-index: 99;
+    display: flex;
+    justify-content: center;
+    background-color: aqua;
+    transition: 0.2s;
+}
+.toast.show {
+    top: 0px;
+    transition: 0.2s;
+}
+
+.toast > div {
+    transform: translateY(20px);
+    position: absolute;
+    border-radius: 10px;
+    padding: 1em 2em;
+    background-color: var(--merah1);
+    max-width: 80%;
+}
+.toast button {
+    padding-inline: 1em;
+    /* background-color: aqua; */
+}
+.toast button[type="submit"] {
+    color: var(--merah);
+}

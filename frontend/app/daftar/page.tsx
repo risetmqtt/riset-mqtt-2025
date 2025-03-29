@@ -53,7 +53,7 @@ export default function Daftar() {
                     }}
                 >
                     <form onSubmit={handleSubmit}>
-                        <h1 className="mb-3">Daftar</h1>
+                        <h1 className="mb-3">Sign up</h1>
                         <label htmlFor="input1" className="input-icon mb-2">
                             <div className="icon">
                                 <MdOutlineEmail />
@@ -80,7 +80,7 @@ export default function Daftar() {
                                 id="input2"
                                 type={eyePass ? "text" : "password"}
                                 required
-                                placeholder="Sandi"
+                                placeholder="Password"
                                 value={formData.sandi}
                                 onChange={(e) => {
                                     setFormData({
@@ -106,11 +106,11 @@ export default function Daftar() {
                             type="submit"
                             className="bg-hijau1 btn text-hijau w-full mt-3"
                         >
-                            Daftar
+                            Sign up
                         </button>
                         <div className="flex flex-col items-center mt-4 gap-1">
                             <p className="text-center text-sm ">
-                                Sudah punya akun?
+                                Already have an account?
                             </p>
                             <Link
                                 href={"/"}

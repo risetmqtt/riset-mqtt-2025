@@ -1,5 +1,6 @@
 "use client";
 
+import useToastStore from "@/store/toastStore";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
@@ -9,6 +10,8 @@ import { MdChevronLeft } from "react-icons/md";
 interface IMenu {
     teks: string;
     url: string;
+    type: string;
+    teks_toast?: string;
 }
 
 interface NavbarProps {
@@ -29,6 +32,7 @@ const NavAtas: React.FC<NavbarProps> = ({
     const handleClickMenu = () => {
         setBukaMenu((prev) => !prev);
     };
+    const { showToast } = useToastStore();
     return (
         <>
             <div
@@ -48,7 +52,15 @@ const NavAtas: React.FC<NavbarProps> = ({
                                 key={ind_m}
                                 onClick={() => {
                                     setBukaMenu(false);
-                                    router.push(m.url);
+                                    if (m.type == "toast")
+                                        showToast(
+                                            m.teks_toast
+                                                ? m.teks_toast
+                                                : m.teks,
+                                            m.url
+                                        );
+                                    else if (m.type == "url")
+                                        router.push(m.url);
                                 }}
                             >
                                 <p>{m.teks}</p>

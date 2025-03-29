@@ -160,7 +160,7 @@ const postData = async (req, res) => {
         const idSensor = req.params.id;
         const { waktu, nilai } = req.body;
         const sensorSelected = await connection.promise().query(`
-                SELECT * FROM sensor WHERE sensor.id = '${idSensor}'`);
+            SELECT * FROM sensor WHERE sensor.id = '${idSensor}'`);
         if (sensorSelected[0].length == 0)
             return res.status(400).json({ pesan: "Sensor tidak ditemukan" });
 
@@ -174,8 +174,42 @@ const postData = async (req, res) => {
         res.status(200).json({
             pesan: `Data sensor ${sensorSelected[0][0].label} berhasil ditambahkan`,
         });
+    } catch (error) {}
+};
+const resetData = async (req, res) => {
+    try {
+        const idSensor = req.params.id;
+        await connection
+            .promise()
+            .query(`UPDATE sensor set data = ? WHERE id = '${idSensor}';`, [
+                JSON.stringify([]),
+            ]);
+        res.status(200).json({
+            pesan: `Data record berhasil direset`,
+        });
     } catch (error) {
         res.status(500).json({ pesan: error.message });
     }
 };
-module.exports = { getAll, postSensor, postData, getUserLain, postUserLain };
+const deleteSensor = async (req, res) => {
+    try {
+        const idSensor = req.params.id;
+        await connection
+            .promise()
+            .query(`DELETE FROM sensor WHERE id = '${idSensor}';`);
+        res.status(200).json({
+            pesan: `Record berhasil dihapus`,
+        });
+    } catch (error) {
+        res.status(500).json({ pesan: error.message });
+    }
+};
+module.exports = {
+    getAll,
+    postSensor,
+    postData,
+    getUserLain,
+    postUserLain,
+    resetData,
+    deleteSensor,
+};

@@ -75,7 +75,7 @@ const SensorDashboard: React.FC<SensorProps> = ({
                         {sensorData[sensor.id].satuan.split("@")[1]}
                     </p>
                     <p className="text-sm">
-                        Batas atas : {sensorData[sensor.id].batas_atas}
+                        Upper limit : {sensorData[sensor.id].batas_atas}
                         {sensorData[sensor.id].satuan.split("@")[1]}
                     </p>
                 </div>

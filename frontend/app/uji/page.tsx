@@ -4,6 +4,10 @@ import NavAtas from "../components/NavAtas";
 import NavBawah from "../components/NavBawah";
 import styles from "./uji.module.css";
 import { useRouter } from "next/navigation";
+import { RiLockPasswordLine } from "react-icons/ri";
+import { IoMdSend } from "react-icons/io";
+import useNotifStore from "@/store/notifStore";
+import Notif from "../components/Notif";
 
 interface ISensor {
     id: string;
@@ -28,6 +32,9 @@ export default function Dashboard() {
     const [loading, setLoading] = useState("Loading...");
     // const [data, setData] = useState<IData[]>();
     const [socket, setSocket] = useState<WebSocket[] | null[]>([]);
+    const [passkey, setPasskey] = useState("");
+    const [refresh, setRefresh] = useState(false);
+    const { notifShow, notifText, showNotification } = useNotifStore();
 
     useEffect(() => {
         async function fetchSensor() {
@@ -39,7 +46,7 @@ export default function Dashboard() {
             const newWsDum = [] as WebSocket[];
             resJson.forEach((s: ISensor, ind_s: number) => {
                 newWsDum[ind_s] = new WebSocket(
-                    `${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/?idsensor=${s.id}`
+                    `${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/?idsensor=${s.id}&passkey=${passkey}`
                 );
                 newWsDum[ind_s].onopen = () => {
                     console.log("Websocket berhasil terkoneksi 00001");
@@ -51,13 +58,14 @@ export default function Dashboard() {
                     newWsDum[ind_s].close();
                 };
             });
+            showNotification("Koneksi Websocket diperbarui");
             setSocket(newWsDum);
             setSensor(resJson);
             setLoading("");
         }
         fetchSensor();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [refresh]);
 
     const handleChange = (
         index: number,
@@ -72,8 +80,30 @@ export default function Dashboard() {
 
     return (
         <>
+            <Notif show={notifShow} teks={notifText} />
             <NavAtas title="Uji Sensor" subtitle="Dashboard" />
             <div className="konten px-6 pb-6">
+                <p className="text-coklat font-bold">Passkey</p>
+                <label className="input-icon mb-3">
+                    <div className="icon">
+                        <RiLockPasswordLine />
+                    </div>
+                    <input
+                        type="text"
+                        required
+                        placeholder="Enter your passkey"
+                        value={passkey}
+                        onChange={(e) => setPasskey(e.target.value)}
+                    />
+                    <button
+                        className="bg-coklat1 p-3 rounded-lg text-coklat"
+                        onClick={() => {
+                            setRefresh((prev) => !prev);
+                        }}
+                    >
+                        <IoMdSend />
+                    </button>
+                </label>
                 {loading ? (
                     <p className="text-sm text-center">
                         <i>{loading}</i>

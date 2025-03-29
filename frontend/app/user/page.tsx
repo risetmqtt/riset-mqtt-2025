@@ -8,29 +8,26 @@ import useNotifStore from "@/store/notifStore";
 import Notif from "../components/Notif";
 import { HiOutlineMail } from "react-icons/hi";
 import useUserStore from "@/store/userStore";
+import { RiLockPasswordLine } from "react-icons/ri";
 
 const User = () => {
     const router = useRouter();
-    const [formData, setFormData] = useState({
-        label: "",
-        id: "",
-        satuan: "",
-    });
-    const { notifShow, notifText } = useNotifStore();
+    const { notifShow, notifText, showNotification } = useNotifStore();
     const { emailUser } = useUserStore();
+    const [passkey, setPasskey] = useState("");
+    const [perubaha, setPerubahan] = useState(false);
 
     useEffect(() => {
         async function fetchSatuan() {
-            const res = await fetch("/api/satuan");
+            const res = await fetch("/api/passkey");
             const resJson = await res.json();
-            setFormData({ ...formData, satuan: String(resJson[0].id) });
+            console.log(resJson);
+            setPasskey(resJson.passkey);
         }
         fetchSatuan();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleLogout = () => {
-        console.log(formData);
         async function funFetchLogin() {
             await fetch("/api/logout", {
                 method: "POST",
@@ -39,14 +36,29 @@ const User = () => {
         }
         funFetchLogin();
     };
+    const handleSubmit = () => {
+        async function funFetchPasskey() {
+            const response = await fetch("/api/passkey", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ passkey }),
+            });
+            const result = await response.json();
+            showNotification(result.pesan);
+            if (response.status == 200) setPerubahan(false);
+        }
+        funFetchPasskey();
+    };
 
     return (
         <>
             <Notif show={notifShow} teks={notifText} />
-            <NavAtas title={"Akun"} subtitle={`Informasi Akun`} />
+            <NavAtas title={"Account"} subtitle={`Account information`} />
             <div className="konten px-6 pb-6">
                 <p className="text-ungu font-bold">Email</p>
-                <label className="input-icon mb-1">
+                <label className="input-icon mb-2">
                     <div className="icon">
                         <HiOutlineMail />
                     </div>
@@ -59,11 +71,41 @@ const User = () => {
                         value={emailUser ? emailUser : ""}
                     />
                 </label>
+                <p className="text-ungu font-bold">Passkey</p>
+                <label className="input-icon mb-2">
+                    <div className="icon">
+                        <RiLockPasswordLine />
+                    </div>
+                    <input
+                        type="text"
+                        required
+                        placeholder="Enter your passkey"
+                        value={passkey}
+                        onChange={(e) => {
+                            setPasskey(e.target.value);
+                            setPerubahan(true);
+                        }}
+                    />
+                </label>
+                <p className="text-sm text-abu mb-7">
+                    *Passkey is used in Websocket URL parameters when writing
+                    data to make your data more secure
+                </p>
+                {perubaha && (
+                    <button
+                        onClick={() => {
+                            handleSubmit();
+                        }}
+                        className={"btn w-full bg-ungu1 text-ungu"}
+                    >
+                        Simpan perubahan
+                    </button>
+                )}
                 <button
                     onClick={() => {
                         handleLogout();
                     }}
-                    className={"btn w-full mt-7 bg-red-100 text-red-500"}
+                    className={"btn w-full mt-1 bg-red-100 text-red-500"}
                 >
                     Logout
                 </button>

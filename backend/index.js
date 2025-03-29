@@ -40,6 +40,7 @@ const sensors = {};
 server.on("connection", (socket, req) => {
     const { query } = parse(req.url, true);
     const idsensor = query.idsensor ? query.idsensor : "XXXXX";
+    const passkey = query.passkey ? query.passkey : "";
 
     if (!idsensor) {
         server.close(1008, "idsensor is required");
@@ -66,9 +67,26 @@ server.on("connection", (socket, req) => {
             async function postData() {
                 try {
                     const sensorSelected = await connection.promise().query(`
-                        SELECT * FROM sensor WHERE sensor.id = '${idsensor}'`);
+                        SELECT sensor.*, user.passkey FROM sensor JOIN user ON user.id = sensor.id_user WHERE sensor.id = '${idsensor}'`);
                     if (sensorSelected[0].length == 0)
                         return console.log(`Sensor : ${idsensor}`);
+                    if (sensorSelected[0][0].passkey != passkey) {
+                        // sensors[idsensor].forEach((client) => {
+                        //     if (
+                        //         client == socket &&
+                        //         client.readyState === WebSocket.OPEN
+                        //     ) {
+
+                        //         client.send(JSON.stringify(datanya)); // Kirim pesan ke semua klien
+                        //     }
+                        // });
+                        if (socket.readyState === WebSocket.OPEN) {
+                            socket.send(
+                                JSON.stringify({ pesan: "Passkey salah" })
+                            );
+                        }
+                        return;
+                    }
                     let dataCur = JSON.parse(sensorSelected[0][0].data);
                     dataCur.push({
                         waktu: datanya.waktu,

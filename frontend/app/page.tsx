@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SyntheticEvent, useState } from "react";
+import { SyntheticEvent, useEffect, useState } from "react";
 import { IoEyeOffOutline, IoEyeOutline } from "react-icons/io5";
 import { MdOutlineEmail } from "react-icons/md";
 import { TbLockPassword } from "react-icons/tb";
@@ -19,6 +19,18 @@ export default function Login() {
     const { notifShow, notifText, showNotification } = useNotifStore();
     const [eyePass, setEyePass] = useState(false);
     const { setUser } = useUserStore();
+
+    useEffect(() => {
+        async function checkLogin() {
+            const response = await fetch("/api/login");
+            const data = await response.json();
+            console.log(data);
+            console.log(response.status);
+            if (response.status == 200) router.replace("/dashboard");
+        }
+        checkLogin();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleSubmit = (e: SyntheticEvent) => {
         e.preventDefault();
@@ -90,7 +102,7 @@ export default function Login() {
                                 type={eyePass ? "text" : "password"}
                                 required
                                 name="sandi"
-                                placeholder="Sandi"
+                                placeholder="Password"
                                 value={formData.sandi}
                                 onChange={(e) =>
                                     setFormData({
@@ -116,18 +128,18 @@ export default function Login() {
                             type="submit"
                             className="bg-hijau1 btn text-hijau w-full mt-3"
                         >
-                            Masuk
+                            Login
                         </button>
                     </form>
                     <div className="flex flex-col items-center mt-4 gap-1">
                         <p className="text-center text-sm ">
-                            Belum punya akun?
+                            Dont have an account yet?
                         </p>
                         <Link
                             className="btn text-hitam border border-black"
                             href={"/daftar"}
                         >
-                            Daftar
+                            Sign up
                         </Link>
                     </div>
                 </div>

@@ -3,6 +3,8 @@
 import GrafikBtg from "@/app/components/GrafikBtg";
 import NavAtas from "@/app/components/NavAtas";
 import NavBawah from "@/app/components/NavBawah";
+import Toast from "@/app/components/Toast";
+import useToastStore from "@/store/toastStore";
 import useWebSocketStore from "@/store/websocketStore";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -85,6 +87,7 @@ export default function Sensor({
     const [user, setUser] = useState<IUser[]>([]);
     const { connectWebSocket, disconnectWebSocket, sensorData } =
         useWebSocketStore();
+    const { toastShow, toastText, toastURL } = useToastStore();
 
     useEffect(() => {
         async function fetchData() {
@@ -121,13 +124,35 @@ export default function Sensor({
 
     return (
         <>
+            <Toast
+                show={toastShow}
+                teks={toastText}
+                url={toastURL}
+                next_url="/"
+            />
             <NavAtas
+                back_url="/dashboard"
                 title={sensor.label}
                 subtitle={`ID : ${sensor.id}`}
                 menu={[
+                    // {
+                    //     url: `/edit/${sensor.id}`,
+                    //     teks: "Edit record",
+                    //     type: "url",
+                    // },
                     {
-                        url: `/edit/${sensor.id}`,
-                        teks: "Edit konfigurasi",
+                        url: `/api/sensor/reset/${sensor.id}`,
+                        teks: "Reset data",
+                        type: "toast",
+                        teks_toast:
+                            "Are you sure you want to delete all data in this record?",
+                    },
+                    {
+                        url: `/api/sensor/delete/${sensor.id}`,
+                        teks: "Delete record",
+                        type: "toast",
+                        teks_toast:
+                            "Are you sure you want to delete this record?",
                     },
                 ]}
             />
@@ -190,7 +215,7 @@ export default function Sensor({
                                 </div>
                             </div>
                         </div>
-                        <h3 className="font-bold mb-1">Keterangan</h3>
+                        <h3 className="font-bold mb-1">Information</h3>
                         <p className="text-abu">
                             Life time :{" "}
                             {sensor.data.length > 0
@@ -214,12 +239,12 @@ export default function Sensor({
                                     : "Disconnect"}
                             </b>
                         </p>
-                        <h3 className="font-bold m-0 mt-3">Pengguna lain</h3>
+                        <h3 className="font-bold m-0 mt-3">Other Users</h3>
                         <p
                             className="text-abu mb-1"
                             style={{ fontSize: "12px", marginTop: "-5px" }}
                         >
-                            Pengguna lain hanya dapat melihat
+                            Other users can only view
                         </p>
                         {user.length > 0 ? (
                             <div>
@@ -237,7 +262,7 @@ export default function Sensor({
                         ) : (
                             <div>
                                 <p className="text-abu">
-                                    <i>Tidak ada pengguna lain</i>
+                                    <i>No other users</i>
                                 </p>
                             </div>
                         )}

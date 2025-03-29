@@ -157,10 +157,10 @@ const Add = () => {
     return (
         <>
             <Notif show={notifShow} teks={notifText} />
-            <NavAtas title={"Tambah Sensor"} subtitle={`Konfigurasi`} />
+            <NavAtas title={"Add Record"} subtitle={`Configuration`} />
             <div className="konten px-6 pb-6">
                 <form onSubmit={handleSubmit}>
-                    <p className="text-coklat font-bold">Jenis Penambahan</p>
+                    <p className="text-coklat font-bold">Type of addition</p>
                     <label className="input-icon mb-2">
                         <div className="icon">
                             <BiSolidSelectMultiple />
@@ -179,8 +179,10 @@ const Add = () => {
                                 });
                             }}
                         >
-                            <option value="1">Sensor Baru</option>
-                            <option value="2">Cari sensor</option>
+                            <option value="1">New record</option>
+                            <option value="2">
+                                Search for available records
+                            </option>
                         </select>
                     </label>
                     {select == "1" ? (
@@ -199,7 +201,7 @@ const Add = () => {
                                             : "text-gray-900"
                                     }
                                     disabled={exist}
-                                    placeholder="Nama sensor"
+                                    placeholder="Record name"
                                     value={formData.label}
                                     onChange={(e) =>
                                         setFormData({
@@ -234,7 +236,7 @@ const Add = () => {
                         </>
                     ) : (
                         <>
-                            <p className="text-coklat font-bold">ID Sensor</p>
+                            <p className="text-coklat font-bold">Record ID</p>
                             <label className="input-icon mb-2">
                                 <div className="icon">
                                     <AiOutlineTool />
@@ -242,7 +244,7 @@ const Add = () => {
                                 <input
                                     type="number"
                                     required
-                                    placeholder="Nomor ID sensor"
+                                    placeholder="Record ID Number"
                                     value={formData.id}
                                     onChange={(e) => {
                                         setAvailable(false);
@@ -272,10 +274,10 @@ const Add = () => {
                                 {checking
                                     ? `Checking id ${formData.id}`
                                     : available
-                                    ? "Sensor tidak ditemukan"
+                                    ? "Record not found"
                                     : exist
-                                    ? "Sensor ditemukan"
-                                    : "Tes ketersediaan id sensor"}
+                                    ? "Record has been found"
+                                    : "Search"}
                             </button>
                         </>
                     )}
@@ -307,10 +309,11 @@ const Add = () => {
                             </label>
                             {exist && (
                                 <p className="mb-5 text-abu text-sm">
-                                    * Label hanya bisa diubah oleh pemilih alat
+                                    * Labels can only be changed by the record
+                                    owner
                                 </p>
                             )}
-                            <h2 className="mb-1">Pemilik Alat</h2>
+                            <h2 className="mb-1">Record Owner</h2>
                             <div className="flex w-full items-center gap-2 text-abu mb-5">
                                 <FiUser size={14} />
                                 <p style={{ flex: 1 }}>
@@ -322,14 +325,12 @@ const Add = () => {
                                         : `IDUSER${sensor?.id_user}`}
                                 </p>
                             </div>
-                            <h3 className="font-bold m-0 mt-3">
-                                Pengguna lain
-                            </h3>
+                            <h3 className="font-bold m-0 mt-3">Other Users</h3>
                             <p
                                 className="text-abu mb-1"
                                 style={{ fontSize: "12px", marginTop: "-5px" }}
                             >
-                                Pengguna lain hanya dapat melihat
+                                Other users can only view
                             </p>
                             {user.length > 0 ? (
                                 <div>
@@ -360,7 +361,7 @@ const Add = () => {
                             "btn w-full mt-7 " + generateClassSubmitBtn()
                         }
                     >
-                        Tambahkan
+                        Add
                     </button>
                 </form>
             </div>

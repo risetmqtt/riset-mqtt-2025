@@ -7,6 +7,8 @@ const {
     postSensor,
     getUserLain,
     postUserLain,
+    resetData,
+    deleteSensor,
 } = require("../controllers/sensor.controller.js");
 
 router.get("/", authenticateToken, getAll);
@@ -15,5 +17,7 @@ router.get("/userlain/:id", authenticateToken, getUserLain);
 router.post("/userlain/:id", authenticateToken, postUserLain);
 router.post("/", authenticateToken, postSensor);
 router.post("/:id", authenticateToken, postData);
+router.post("/reset/:id", authenticateToken, resetData);
+router.post("/delete/:id", authenticateToken, deleteSensor);
 
 module.exports = router;

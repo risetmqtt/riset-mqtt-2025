@@ -1,5 +1,6 @@
 // app/api/login/route.ts
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 export async function POST(req: Request) {
     const { email, sandi } = await req.json();
@@ -32,4 +33,26 @@ export async function POST(req: Request) {
             "Set-Cookie": `token=${responseLogin.token}; HttpOnly; Path=/; Max-Age=86400`,
         },
     });
+}
+
+export async function GET() {
+    try {
+        const token = (await cookies()).get("token")?.value;
+        const response = await fetch(`${process.env.BACKEND_URL}/auth/user`, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        const responseJson = await response.json();
+        return NextResponse.json(responseJson, { status: response.status });
+    } catch (error) {
+        return NextResponse.json(
+            {
+                pesan: error,
+            },
+            { status: 500 }
+        );
+    }
 }
