@@ -1,0 +1,16 @@
+.container {
+    border-block: 1px solid;
+}
+.container::-webkit-scrollbar {
+    display: none;
+}
+
+.ungu {
+    border-color: var(--ungu);
+}
+.hijau {
+    border-color: var(--hijau);
+}
+.coklat {
+    border-color: var(--coklat);
+}

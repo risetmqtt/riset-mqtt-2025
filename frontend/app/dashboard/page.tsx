@@ -11,7 +11,7 @@ import useUserStore from "@/store/userStore";
 
 interface IDataSensor {
     waktu: number;
-    nilai: number;
+    nilai: string;
 }
 
 interface ISensor {
@@ -23,6 +23,7 @@ interface ISensor {
     batas_bawah: number;
     batas_atas: number;
     satuan: string;
+    string: boolean;
 }
 
 const limitData = 20;

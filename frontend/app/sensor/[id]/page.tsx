@@ -3,27 +3,25 @@
 import GrafikBtg from "@/app/components/GrafikBtg";
 import NavAtas from "@/app/components/NavAtas";
 import NavBawah from "@/app/components/NavBawah";
+import Notif from "@/app/components/Notif";
 import Toast from "@/app/components/Toast";
+import useNotifStore from "@/store/notifStore";
 import useToastStore from "@/store/toastStore";
+import useUserStore from "@/store/userStore";
 import useWebSocketStore from "@/store/websocketStore";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { FaChartBar } from "react-icons/fa";
+import { FaTableList } from "react-icons/fa6";
 import { FiUser } from "react-icons/fi";
+import { PiMicrosoftExcelLogo } from "react-icons/pi";
+import * as XLSX from "xlsx";
 
 interface IDataSensor {
     waktu: number;
-    nilai: number;
+    nilai: string;
 }
 
-// interface ISensor {
-//     id: string;
-//     label: string;
-//     id_struktur: number;
-//     data: IDataSensor[];
-//     current_value: number;
-//     batas_atas: number;
-//     satuan: string;
-// }
 interface ISensor {
     id: string;
     label: string;
@@ -33,6 +31,9 @@ interface ISensor {
     batas_bawah: number;
     batas_atas: number;
     satuan: string;
+    email: string;
+    id_user: number;
+    string: boolean;
 }
 
 interface IUser {
@@ -67,6 +68,21 @@ function timeDifference(current: number, previous: number) {
 
 const limitData = 50;
 
+function formatTgl(timestamp: number) {
+    const date = new Date(timestamp);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0"); // bulan dimulai dari 0
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+function formatJam(timestamp: number) {
+    const date = new Date(timestamp);
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const seconds = String(date.getSeconds()).padStart(2, "0");
+    return `${hours}:${minutes}:${seconds}`;
+}
+
 export default function Sensor({
     params,
 }: {
@@ -83,19 +99,28 @@ export default function Sensor({
         batas_atas: 0,
         batas_bawah: 0,
         satuan: "",
+        email: "",
+        id_user: 0,
+        string: false,
     });
     const [user, setUser] = useState<IUser[]>([]);
     const { connectWebSocket, disconnectWebSocket, sensorData } =
         useWebSocketStore();
     const { toastShow, toastText, toastURL } = useToastStore();
+    const { emailUser } = useUserStore();
+    const { notifShow, notifText } = useNotifStore();
+    const [typeDisplay, setTypeDisplay] = useState("chart");
+    const containerData = useRef<HTMLDivElement>(null);
+    const tableElm = useRef<HTMLTableElement>(null);
 
     useEffect(() => {
         async function fetchData() {
             const respoonse = await fetch(`/api/sensor/${(await params).id}`);
-
             const resJson = await respoonse.json();
             if (respoonse.status == 401) return router.replace("/");
             if (respoonse.status != 200) return setLoading(resJson.pesan);
+            console.log(resJson);
+            if (resJson.string) setTypeDisplay("table");
             setSensor(resJson);
 
             const resUser = await fetch(
@@ -122,24 +147,59 @@ export default function Sensor({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sensor.id, connectWebSocket, disconnectWebSocket]);
 
+    useEffect(() => {
+        setTimeout(() => {
+            if (containerData.current) {
+                containerData.current.scrollTop =
+                    containerData.current.scrollHeight;
+            }
+        }, 0);
+    }, [sensorData]);
+
+    const generateBatasWaktu = (data: IDataSensor[], limit: number) => {
+        const dataLimit = [...data];
+        dataLimit.splice(0, dataLimit.length - limit);
+        return dataLimit.length > 0
+            ? {
+                  batas_kiri: formatJam(dataLimit[0].waktu),
+                  batas_kanan: formatJam(dataLimit[dataLimit.length - 1].waktu),
+              }
+            : {
+                  batas_kiri: "00:00:00",
+                  batas_kanan: "00:00:00",
+              };
+    };
+
+    const handleExportExcel = () => {
+        if (!tableElm.current) return;
+
+        // ambil elemen tabel HTML
+        const table = tableElm.current;
+        // konversi tabel HTML ke worksheet
+        const worksheet = XLSX.utils.table_to_sheet(table);
+
+        // buat workbook dan tambahkan worksheet
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
+
+        // ekspor workbook ke file Excel
+        XLSX.writeFile(workbook, `Tabel ${sensor.label}.xlsx`);
+    };
+
     return (
         <>
+            <Notif show={notifShow} teks={notifText} />
             <Toast
                 show={toastShow}
                 teks={toastText}
                 url={toastURL}
-                next_url="/"
+                next_url="/dashboard"
             />
             <NavAtas
                 back_url="/dashboard"
                 title={sensor.label}
                 subtitle={`ID : ${sensor.id}`}
                 menu={[
-                    // {
-                    //     url: `/edit/${sensor.id}`,
-                    //     teks: "Edit record",
-                    //     type: "url",
-                    // },
                     {
                         url: `/api/sensor/reset/${sensor.id}`,
                         teks: "Reset data",
@@ -163,59 +223,309 @@ export default function Sensor({
                     </p>
                 ) : (
                     <div>
-                        <p className="text-hijau">Current value</p>
-                        <h1 className="mb-2">
-                            {sensorData[sensor.id]
-                                ? sensorData[sensor.id].current_value
-                                : sensor.data[sensor.data.length - 1]
-                                      .nilai}{" "}
-                            {sensor.satuan.split("@")[0]}
-                        </h1>
-                        <div className="w-full flex gap-2 bg-hijau1 p-4 rounded-lg mb-3">
-                            <div>
-                                <div
-                                    style={{
-                                        borderRight: "1px solid var(--hijau)",
-                                        height: "100px",
-                                    }}
-                                    className="pe-2 flex flex-col justify-between items-end"
-                                >
-                                    <p style={{ fontSize: "12px" }}>
-                                        {sensorData[sensor.id]
-                                            ? sensorData[sensor.id].batas_atas
-                                            : "Nan"}
-                                        {sensor.satuan.split("@")[1]}
-                                    </p>
-                                    <p style={{ fontSize: "12px" }}>
-                                        {sensorData[sensor.id]
-                                            ? sensorData[sensor.id].batas_bawah
-                                            : "Nan"}
-                                        {sensor.satuan.split("@")[1]}
-                                    </p>
-                                </div>
+                        <div className="flex items-center">
+                            <div style={{ flex: "1" }}>
+                                <p className="text-hijau">Current value</p>
+                                <h1 className="mb-2">
+                                    {sensorData[sensor.id]
+                                        ? sensorData[sensor.id].current_value
+                                        : sensor.data.length > 0
+                                        ? sensor.data[sensor.data.length - 1]
+                                              .nilai
+                                        : 0}{" "}
+                                    {sensor.satuan.split("@")[0] == "-"
+                                        ? ""
+                                        : sensor.satuan.split("@")[0]}
+                                </h1>
                             </div>
-                            <div style={{ flex: 1 }}>
-                                <div
-                                    className="w-full pt-2"
-                                    style={{ height: "100px" }}
-                                >
-                                    <GrafikBtg
-                                        warna={"bg-hijau"}
-                                        data={
-                                            sensorData[sensor.id]
-                                                ? sensorData[sensor.id].data
-                                                : sensor.data
+                            <div className="flex gap-1 items-center">
+                                {!sensor.string && (
+                                    <button
+                                        className={
+                                            "py-1 px-2 rounded " +
+                                            (typeDisplay == "chart"
+                                                ? "bg-hijau1 text-hijau"
+                                                : "text-gray-700")
                                         }
-                                        limit={limitData}
-                                    />
-                                </div>
-                                <div className="flex justify-between">
-                                    <p style={{ fontSize: "12px" }}>12:00</p>
-                                    <p style={{ fontSize: "12px" }}>17:29</p>
-                                </div>
+                                        onClick={() => {
+                                            setTypeDisplay("chart");
+                                        }}
+                                    >
+                                        <FaChartBar />
+                                    </button>
+                                )}
+                                <button
+                                    className={
+                                        "py-1 px-2 rounded " +
+                                        (typeDisplay == "table"
+                                            ? "bg-hijau1 text-hijau"
+                                            : "text-gray-700")
+                                    }
+                                    onClick={() => {
+                                        setTypeDisplay("table");
+                                    }}
+                                >
+                                    <FaTableList />
+                                </button>
                             </div>
                         </div>
+                        {typeDisplay == "chart" ? (
+                            <div className="w-full flex gap-2 bg-hijau1 p-4 rounded-lg mb-3">
+                                <div>
+                                    <div
+                                        style={{
+                                            borderRight:
+                                                "1px solid var(--hijau)",
+                                            height: "100px",
+                                        }}
+                                        className="pe-2 flex flex-col justify-between items-end"
+                                    >
+                                        <p style={{ fontSize: "12px" }}>
+                                            {sensorData[sensor.id]
+                                                ? sensorData[sensor.id]
+                                                      .batas_atas
+                                                : "Nan"}
+                                            {sensor.satuan.split("@")[1] == "-"
+                                                ? ""
+                                                : sensor.satuan.split("@")[1]}
+                                        </p>
+                                        <p style={{ fontSize: "12px" }}>
+                                            {sensorData[sensor.id]
+                                                ? sensorData[sensor.id]
+                                                      .batas_bawah
+                                                : "Nan"}
+                                            {sensor.satuan.split("@")[1] == "-"
+                                                ? ""
+                                                : sensor.satuan.split("@")[1]}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div
+                                        className="w-full pt-2"
+                                        style={{ height: "100px" }}
+                                    >
+                                        <GrafikBtg
+                                            warna={"bg-hijau"}
+                                            data={
+                                                sensorData[sensor.id]
+                                                    ? sensorData[sensor.id].data
+                                                    : sensor.data
+                                            }
+                                            limit={limitData}
+                                        />
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <p style={{ fontSize: "12px" }}>
+                                            {
+                                                generateBatasWaktu(
+                                                    sensorData[sensor.id]
+                                                        ? sensorData[sensor.id]
+                                                              .data
+                                                        : [],
+                                                    limitData
+                                                ).batas_kiri
+                                            }
+                                        </p>
+                                        <p style={{ fontSize: "12px" }}>
+                                            {
+                                                generateBatasWaktu(
+                                                    sensorData[sensor.id]
+                                                        ? sensorData[sensor.id]
+                                                              .data
+                                                        : [],
+                                                    limitData
+                                                ).batas_kanan
+                                            }
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <div
+                                    className="w-full bg-hijau1 px-4 py-3 rounded-lg mb-1"
+                                    style={{
+                                        fontSize: "14px",
+                                        lineHeight: "15px",
+                                    }}
+                                >
+                                    <div
+                                        className="flex items-center gap-2 pb-2"
+                                        style={{
+                                            borderBottom:
+                                                "1px solid var(--hijau)",
+                                        }}
+                                    >
+                                        <div style={{ width: "80px" }}>
+                                            Waktu
+                                        </div>
+                                        <div style={{ flex: 1 }}>Data</div>
+                                    </div>
+                                    {sensorData[sensor.id] && (
+                                        <div
+                                            className="flex flex-col gap-1 py-2"
+                                            style={{
+                                                maxHeight: "100px",
+                                                overflow: "auto",
+                                            }}
+                                            ref={containerData}
+                                        >
+                                            {sensorData[sensor.id].data.length >
+                                            0 ? (
+                                                <>
+                                                    {sensorData[
+                                                        sensor.id
+                                                    ].data.map((d, ind_d) => (
+                                                        <div
+                                                            key={ind_d}
+                                                            className="flex gap-2"
+                                                        >
+                                                            <div
+                                                                style={{
+                                                                    width: "80px",
+                                                                }}
+                                                            >
+                                                                <p className="text-hijau">
+                                                                    {formatTgl(
+                                                                        d.waktu
+                                                                    )}
+                                                                </p>
+                                                                <p
+                                                                    style={{
+                                                                        fontSize:
+                                                                            "12px",
+                                                                    }}
+                                                                    className="text-gray-500"
+                                                                >
+                                                                    {formatJam(
+                                                                        d.waktu
+                                                                    )}
+                                                                </p>
+                                                            </div>
+                                                            <div
+                                                                style={{
+                                                                    flex: 1,
+                                                                }}
+                                                            >
+                                                                {d.nilai}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </>
+                                            ) : (
+                                                <p className="text-gray-500">
+                                                    <i>Belum ada data</i>
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                {sensorData[sensor.id] &&
+                                    sensorData[sensor.id].data.length > 0 && (
+                                        <>
+                                            <table
+                                                ref={tableElm}
+                                                style={{ display: "none" }}
+                                            >
+                                                <thead>
+                                                    <tr>
+                                                        <th colSpan={2}>
+                                                            {`${
+                                                                sensorData[
+                                                                    sensor.id
+                                                                ].label
+                                                            } (${
+                                                                sensorData[
+                                                                    sensor.id
+                                                                ].id
+                                                            })`}
+                                                        </th>
+                                                    </tr>
+                                                    <tr>
+                                                        <th colSpan={2}>
+                                                            {`Range waktu : ${formatTgl(
+                                                                sensorData[
+                                                                    sensor.id
+                                                                ].data[0].waktu
+                                                            )} ${formatJam(
+                                                                sensorData[
+                                                                    sensor.id
+                                                                ].data[0].waktu
+                                                            )} s.d ${formatTgl(
+                                                                sensorData[
+                                                                    sensor.id
+                                                                ].data[
+                                                                    sensorData[
+                                                                        sensor
+                                                                            .id
+                                                                    ].data
+                                                                        .length -
+                                                                        1
+                                                                ].waktu
+                                                            )} ${formatJam(
+                                                                sensorData[
+                                                                    sensor.id
+                                                                ].data[
+                                                                    sensorData[
+                                                                        sensor
+                                                                            .id
+                                                                    ].data
+                                                                        .length -
+                                                                        1
+                                                                ].waktu
+                                                            )}`}
+                                                        </th>
+                                                    </tr>
+                                                    <tr>
+                                                        <th colSpan={2}>
+                                                            {`Jumlah data : ${
+                                                                sensorData[
+                                                                    sensor.id
+                                                                ].data.length
+                                                            }`}
+                                                        </th>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>Waktu</th>
+                                                        <th>Data</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {sensorData[
+                                                        sensor.id
+                                                    ].data.map((d, ind_d) => (
+                                                        <tr key={ind_d}>
+                                                            <td>{`${formatTgl(
+                                                                d.waktu
+                                                            )} ${formatJam(
+                                                                d.waktu
+                                                            )}`}</td>
+                                                            <td>{d.nilai}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                            <div
+                                                onClick={() => {
+                                                    handleExportExcel();
+                                                }}
+                                                className="flex gap-2 items-center btn bg-hijau1 text-hijau mb-3 justify-center"
+                                            >
+                                                <PiMicrosoftExcelLogo />
+                                                <p>Export to Excel</p>
+                                            </div>
+                                        </>
+                                    )}
+                            </>
+                        )}
                         <h3 className="font-bold mb-1">Information</h3>
+                        <p className="text-abu">
+                            Data amount :{" "}
+                            {sensorData[sensor.id]
+                                ? sensorData[sensor.id].data.length
+                                : 0}
+                        </p>
                         <p className="text-abu">
                             Life time :{" "}
                             {sensor.data.length > 0
@@ -239,6 +549,16 @@ export default function Sensor({
                                     : "Disconnect"}
                             </b>
                         </p>
+                        <h3 className="font-bold m-0 mt-3">Record Owner</h3>
+                        <div className="flex w-full items-center gap-2 text-abu">
+                            <FiUser size={14} />
+                            <p style={{ flex: 1 }}>
+                                {sensor.email == emailUser
+                                    ? "You"
+                                    : sensor.email}
+                            </p>
+                            <p>IDUSER{sensor.id_user}</p>
+                        </div>
                         <h3 className="font-bold m-0 mt-3">Other Users</h3>
                         <p
                             className="text-abu mb-1"

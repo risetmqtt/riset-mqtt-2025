@@ -3,6 +3,7 @@ import styles from "./dashboard.module.css";
 import GrafikBtg from "../components/GrafikBtg";
 import { useEffect } from "react";
 import useWebSocketStore from "@/store/websocketStore";
+import MiniTable from "../components/MiniTable";
 
 interface SensorProps {
     sensor: ISensor;
@@ -11,7 +12,7 @@ interface SensorProps {
 }
 interface IDataSensor {
     waktu: number;
-    nilai: number;
+    nilai: string;
 }
 interface ISensor {
     id: string;
@@ -22,6 +23,7 @@ interface ISensor {
     batas_atas: number;
     batas_bawah: number;
     satuan: string;
+    string: boolean;
 }
 const SensorDashboard: React.FC<SensorProps> = ({
     sensor,
@@ -64,20 +66,44 @@ const SensorDashboard: React.FC<SensorProps> = ({
                 >
                     <p>ID : {sensor.id}</p>
                     <div style={{ flex: 1 }} className="w-full my-2">
-                        <GrafikBtg
-                            warna={generateWarna(ind_sensor)}
-                            data={sensorData[sensor.id].data}
-                        />
+                        {sensorData[sensor.id].string ? (
+                            <MiniTable
+                                warna={generateWarna(ind_sensor)}
+                                data={sensorData[sensor.id].data}
+                            />
+                        ) : (
+                            <GrafikBtg
+                                warna={generateWarna(ind_sensor)}
+                                data={sensorData[sensor.id].data}
+                            />
+                        )}
                     </div>
                     <p className="font-bold text-hitam">{sensor.label}</p>
-                    <p className="text-sm">
-                        Currect value : {sensorData[sensor.id].current_value}
-                        {sensorData[sensor.id].satuan.split("@")[1]}
-                    </p>
-                    <p className="text-sm">
-                        Upper limit : {sensorData[sensor.id].batas_atas}
-                        {sensorData[sensor.id].satuan.split("@")[1]}
-                    </p>
+                    {!sensorData[sensor.id].string ? (
+                        <>
+                            <p className="text-sm">
+                                Currect value :{" "}
+                                {sensorData[sensor.id].current_value}
+                                {sensorData[sensor.id].satuan.split("@")[1] ==
+                                "-"
+                                    ? ""
+                                    : sensorData[sensor.id].satuan.split(
+                                          "@"
+                                      )[1]}
+                            </p>
+                            <p className="text-sm">
+                                Upper limit : {sensorData[sensor.id].batas_atas}
+                                {sensorData[sensor.id].satuan.split("@")[1] ==
+                                "-"
+                                    ? ""
+                                    : sensorData[sensor.id].satuan.split(
+                                          "@"
+                                      )[1]}
+                            </p>
+                        </>
+                    ) : (
+                        <p className="text-sm">*Last 10 data only</p>
+                    )}
                 </div>
             ) : (
                 <p className="text-sm text-center">

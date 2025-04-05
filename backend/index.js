@@ -59,38 +59,61 @@ server.on("connection", (socket, req) => {
         try {
             const datanya = {
                 idsensor: idsensor,
-                nilai: Number(message),
+                nilai: message.toString(),
                 waktu: Date.now(),
             };
             console.log(datanya);
 
+            function isNumber(string) {
+                const value = string.replace(",", ".");
+                return !isNaN(value);
+            }
+
             async function postData() {
                 try {
                     const sensorSelected = await connection.promise().query(`
-                        SELECT sensor.*, user.passkey FROM sensor JOIN user ON user.id = sensor.id_user WHERE sensor.id = '${idsensor}'`);
+                        SELECT sensor.*, user.passkey, struktur_data.string 
+                        FROM sensor 
+                        JOIN user ON user.id = sensor.id_user 
+                        JOIN struktur_data ON sensor.id_struktur = struktur_data.id 
+                        WHERE sensor.id = '${idsensor}'`);
                     if (sensorSelected[0].length == 0)
-                        return console.log(`Sensor : ${idsensor}`);
-                    if (sensorSelected[0][0].passkey != passkey) {
-                        // sensors[idsensor].forEach((client) => {
-                        //     if (
-                        //         client == socket &&
-                        //         client.readyState === WebSocket.OPEN
-                        //     ) {
+                        return console.log(
+                            `Sensor : ${idsensor} tidak ditemukan (ini dari socket)`
+                        );
 
-                        //         client.send(JSON.stringify(datanya)); // Kirim pesan ke semua klien
-                        //     }
-                        // });
+                    let isWrong = [false, ""];
+
+                    if (
+                        sensorSelected[0][0].string &&
+                        isNumber(datanya.nilai)
+                    ) {
+                        isWrong[0] = true;
+                        isWrong[1] = "Data harus berupa string";
+                    } else if (
+                        !sensorSelected[0][0].string &&
+                        !isNumber(datanya.nilai)
+                    ) {
+                        isWrong[0] = true;
+                        isWrong[1] = "Data harus berupa number";
+                    }
+
+                    if (sensorSelected[0][0].passkey != passkey) {
+                        isWrong[0] = true;
+                        isWrong[1] = "Passkey salah";
+                    }
+                    if (isWrong[0]) {
                         if (socket.readyState === WebSocket.OPEN) {
-                            socket.send(
-                                JSON.stringify({ pesan: "Passkey salah" })
-                            );
+                            socket.send(JSON.stringify({ pesan: isWrong[1] }));
                         }
                         return;
                     }
                     let dataCur = JSON.parse(sensorSelected[0][0].data);
                     dataCur.push({
                         waktu: datanya.waktu,
-                        nilai: datanya.nilai,
+                        nilai: isNumber(datanya.nilai)
+                            ? Number(datanya.nilai)
+                            : datanya.nilai,
                     });
                     await connection
                         .promise()

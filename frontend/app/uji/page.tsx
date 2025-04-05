@@ -15,9 +15,10 @@ interface ISensor {
     id_struktur: number;
     data: {
         waktu: number;
-        nilai?: number;
+        nilai?: string;
         celcius?: number;
     }[];
+    string: boolean;
 }
 
 // interface IData {
@@ -60,6 +61,8 @@ export default function Dashboard() {
             });
             showNotification("Koneksi Websocket diperbarui");
             setSocket(newWsDum);
+            console.log("sensor");
+            console.log(resJson);
             setSensor(resJson);
             setLoading("");
         }
@@ -121,10 +124,11 @@ export default function Dashboard() {
                                 </p>
                                 <p className="text-sm">Currect value : 220</p>
                                 <input
-                                    type="range"
+                                    type={s.string ? "text" : "range"}
                                     onChange={(e) => {
                                         handleChange(ind_s, e);
                                     }}
+                                    style={{ width: "100px" }}
                                 />
                             </div>
                         ))}

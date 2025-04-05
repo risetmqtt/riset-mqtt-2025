@@ -12,31 +12,42 @@ interface WebSocketStore {
 }
 interface IDataSensor {
     waktu: number;
-    nilai: number;
+    nilai: string;
 }
 interface ISensor {
     id: string;
     label: string;
     id_struktur: number;
     data: IDataSensor[];
-    current_value: number;
+    current_value: number | string;
     batas_atas: number;
     batas_bawah: number;
     satuan: string;
+    string: boolean;
 }
 
-const hitungCurrentValueDanBatasAtas = (data: IDataSensor[], limit: number) => {
+const hitungCurrentValueDanBatasAtas = (
+    data: IDataSensor[],
+    limit: number,
+    string: boolean
+) => {
     const dataLimit = [...data];
     dataLimit.splice(0, dataLimit.length - limit);
-    let current_value = 0;
+    let current_value = null;
     let batas_atas = 0;
-    let batas_bawah = dataLimit.length > 0 ? dataLimit[0].nilai : 0;
+    let batas_bawah = dataLimit.length > 0 ? Number(dataLimit[0].nilai) : 0;
     if (dataLimit.length > 0) {
-        current_value = Number(dataLimit[dataLimit.length - 1].nilai);
+        current_value = string
+            ? dataLimit[dataLimit.length - 1].nilai
+            : Number(dataLimit[dataLimit.length - 1].nilai);
+    } else {
+        current_value = string ? "" : 0;
     }
     dataLimit.forEach((e) => {
-        batas_atas = e.nilai > batas_atas ? e.nilai : batas_atas;
-        batas_bawah = e.nilai < batas_bawah ? e.nilai : batas_bawah;
+        batas_atas =
+            Number(e.nilai) > batas_atas ? Number(e.nilai) : batas_atas;
+        batas_bawah =
+            Number(e.nilai) < batas_bawah ? Number(e.nilai) : batas_bawah;
     });
     return { current_value, batas_atas, batas_bawah };
 };
@@ -55,7 +66,11 @@ const useWebSocketStore = create<WebSocketStore>((set, get) => ({
         ws.onopen = () => {
             console.log(`WebSocket ${sensor.id} connected`);
             const { current_value, batas_atas, batas_bawah } =
-                hitungCurrentValueDanBatasAtas([...sensor.data], limit);
+                hitungCurrentValueDanBatasAtas(
+                    [...sensor.data],
+                    limit,
+                    sensor.string
+                );
             set((state) => ({
                 sensorData: {
                     ...state.sensorData,
@@ -75,7 +90,11 @@ const useWebSocketStore = create<WebSocketStore>((set, get) => ({
                 if (!existingSensor) return state; // Jika sensor tidak ditemukan, tidak perlu update
                 const updatedData = [...existingSensor.data, data]; // Data baru ditambahkan ke array yang ada
                 const { current_value, batas_atas, batas_bawah } =
-                    hitungCurrentValueDanBatasAtas(updatedData, limit);
+                    hitungCurrentValueDanBatasAtas(
+                        updatedData,
+                        limit,
+                        sensor.string
+                    );
                 return {
                     sensorData: {
                         ...state.sensorData,

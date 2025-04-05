@@ -1,3 +1,4 @@
+import useNotifStore from "@/store/notifStore";
 import useToastStore from "@/store/toastStore";
 import { useRouter } from "next/navigation";
 import { SyntheticEvent } from "react";
@@ -11,16 +12,23 @@ interface ToastProps {
 const Toast: React.FC<ToastProps> = ({ teks, url, next_url, show }) => {
     const router = useRouter();
     const { closeToast } = useToastStore();
+    const { showNotification } = useNotifStore();
     const handleSubmit = (e: SyntheticEvent) => {
         e.preventDefault();
         async function funFetchLogin() {
-            await fetch(url, {
+            const fetchUrl = await fetch(url, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
             });
-            router.push(next_url);
+            const fetchUrlJson = await fetchUrl.json();
+            closeToast();
+            if (fetchUrl.status !== 200) {
+                showNotification(fetchUrlJson.pesan);
+            } else {
+                router.push(next_url);
+            }
         }
         funFetchLogin();
     };

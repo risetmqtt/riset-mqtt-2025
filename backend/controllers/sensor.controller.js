@@ -21,6 +21,7 @@ const getAll = async (req, res) => {
             SELECT 
                 sensor.* ,
                 struktur_data.satuan, 
+                struktur_data.string, 
                 user.email 
             FROM sensor 
             JOIN struktur_data ON sensor.id_struktur = struktur_data.id 
@@ -31,6 +32,7 @@ const getAll = async (req, res) => {
             SELECT 
                 sensor.*,
                 struktur_data.satuan, 
+                struktur_data.string, 
                 user.email 
             FROM sensor 
             JOIN struktur_data ON sensor.id_struktur = struktur_data.id 
@@ -47,13 +49,17 @@ const getAll = async (req, res) => {
             dataFix.push(elm);
         });
         if (idSensor) {
-            return res
-                .status(200)
-                .json(
-                    dataFix.length == 0
-                        ? { pesan: "Data tidak ditemukan" }
-                        : dataFix[0]
-                );
+            if (dataFix.length > 0) {
+                if (
+                    dataFix[0].id_user == iduser ||
+                    dataFix[0].id_user_lain.includes(emailuser)
+                ) {
+                    return res.status(200).json(dataFix[0]);
+                }
+                return res.status(403).json({ pesan: "TIdak diizinkan" });
+            } else {
+                return res.status(200).json({ pesan: "Data tidak ditemukan" });
+            }
         } else return res.status(200).json(dataFix);
     } catch (error) {
         res.status(500).json({ pesan: error.message });
@@ -155,17 +161,32 @@ const postSensor = async (req, res) => {
         res.status(500).json({ pesan: error.message });
     }
 };
+function isNumber(string) {
+    const value = string.replace(",", ".");
+    return !isNaN(value);
+}
 const postData = async (req, res) => {
     try {
         const idSensor = req.params.id;
         const { waktu, nilai } = req.body;
         const sensorSelected = await connection.promise().query(`
-            SELECT * FROM sensor WHERE sensor.id = '${idSensor}'`);
+            SELECT sensor.data, sensor.label, struktur_data.string
+            FROM sensor 
+            JOIN struktur_data ON sensor.id_struktur = struktur_data.id
+            WHERE sensor.id = '${idSensor}';`);
         if (sensorSelected[0].length == 0)
             return res.status(400).json({ pesan: "Sensor tidak ditemukan" });
 
+        if (sensorSelected[0][0].string && isNumber(nilai)) {
+            return res.status(400).json({ pesan: "Data harus berupa string" });
+        } else if (!sensorSelected[0][0].string && !isNumber(nilai)) {
+            return res.status(400).json({ pesan: "Data harus berupa number" });
+        }
         let dataCur = JSON.parse(sensorSelected[0][0].data);
-        dataCur.push({ waktu, nilai });
+        dataCur.push({
+            waktu: waktu ? waktu : Date.now(),
+            nilai: isNumber(nilai) ? Number(nilai) : nilai,
+        });
         await connection
             .promise()
             .query(`UPDATE sensor set data = ? WHERE id = '${idSensor}';`, [
@@ -179,14 +200,24 @@ const postData = async (req, res) => {
 const resetData = async (req, res) => {
     try {
         const idSensor = req.params.id;
-        await connection
+        const iduser = req.user.id;
+        const getSensorCur = await connection
             .promise()
-            .query(`UPDATE sensor set data = ? WHERE id = '${idSensor}';`, [
-                JSON.stringify([]),
-            ]);
-        res.status(200).json({
-            pesan: `Data record berhasil direset`,
-        });
+            .query(`SELECT * FROM sensor WHERE id = '${idSensor}';`);
+        if (getSensorCur[0][0].id_user == iduser) {
+            await connection
+                .promise()
+                .query(`UPDATE sensor set data = ? WHERE id = '${idSensor}';`, [
+                    JSON.stringify([]),
+                ]);
+            res.status(200).json({
+                pesan: `Data record berhasil direset`,
+            });
+        } else {
+            res.status(400).json({
+                pesan: `Anda tidak diizinkan mereset data`,
+            });
+        }
     } catch (error) {
         res.status(500).json({ pesan: error.message });
     }
@@ -194,9 +225,25 @@ const resetData = async (req, res) => {
 const deleteSensor = async (req, res) => {
     try {
         const idSensor = req.params.id;
-        await connection
+        const iduser = req.user.id;
+        const emailuser = req.user.email;
+        const getSensorCur = await connection
             .promise()
-            .query(`DELETE FROM sensor WHERE id = '${idSensor}';`);
+            .query(`SELECT * FROM sensor WHERE id = '${idSensor}';`);
+        if (getSensorCur[0][0].id_user == iduser) {
+            await connection
+                .promise()
+                .query(`DELETE FROM sensor WHERE id = '${idSensor}';`);
+        } else {
+            const idUserLain = JSON.parse(getSensorCur[0][0].id_user_lain);
+            const idUserLainNew = idUserLain.filter((e) => e != emailuser);
+            await connection
+                .promise()
+                .query(
+                    `UPDATE sensor set id_user_lain = ? WHERE id = '${idSensor}';`,
+                    [JSON.stringify(idUserLainNew)]
+                );
+        }
         res.status(200).json({
             pesan: `Record berhasil dihapus`,
         });
