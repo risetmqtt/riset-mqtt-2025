@@ -9,10 +9,12 @@ const {
     postUserLain,
     resetData,
     deleteSensor,
+    searchSensor,
 } = require("../controllers/sensor.controller.js");
 
 router.get("/", authenticateToken, getAll);
 router.get("/:id", authenticateToken, getAll);
+router.get("/search/:id", authenticateToken, searchSensor);
 router.get("/userlain/:id", authenticateToken, getUserLain);
 router.post("/userlain/:id", authenticateToken, postUserLain);
 router.post("/", authenticateToken, postSensor);

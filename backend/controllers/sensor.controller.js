@@ -10,6 +10,34 @@ const connection = mysql.createPool({
     dateStrings: true,
 });
 
+const searchSensor = async (req, res) => {
+    const idSensor = req.params.id;
+    try {
+        const data = await connection.promise().query(`
+            SELECT 
+                sensor.* ,
+                struktur_data.satuan, 
+                struktur_data.string, 
+                user.email 
+            FROM sensor 
+            JOIN struktur_data ON sensor.id_struktur = struktur_data.id 
+            JOIN user ON sensor.id_user = user.id
+            WHERE sensor.id = '${idSensor}'`);
+        let dataFix = [];
+        data[0].forEach((d) => {
+            const elm = {
+                ...d,
+                data: JSON.parse(d.data),
+                id_user_lain: JSON.parse(d.id_user_lain),
+            };
+            dataFix.push(elm);
+        });
+        if (dataFix.length > 0) return res.status(200).json(dataFix[0]);
+        else return res.status(400).json({ pesan: "Data tidak ditemukan" });
+    } catch (error) {
+        res.status(500).json({ pesan: error.message });
+    }
+};
 const getAll = async (req, res) => {
     const iduser = req.user.id;
     const emailuser = req.user.email;
@@ -259,4 +287,5 @@ module.exports = {
     postUserLain,
     resetData,
     deleteSensor,
+    searchSensor,
 };

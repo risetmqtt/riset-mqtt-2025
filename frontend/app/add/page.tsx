@@ -70,7 +70,7 @@ const Add = () => {
         setAvailable(false);
         setExist(false);
         setSensor(null);
-        const res = await fetch(`/api/sensor/${formData.id}`);
+        const res = await fetch(`/api/sensor/search/${formData.id}`);
         const resJson = await res.json();
         console.log(resJson);
         if (res.status == 401) return router.replace("/");
