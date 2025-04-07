@@ -26,7 +26,7 @@ interface ISensor {
     string: boolean;
 }
 
-const limitData = 20;
+const limitData = 17;
 
 export default function Dashboard() {
     const router = useRouter();
@@ -34,7 +34,6 @@ export default function Dashboard() {
     const [loading, setLoading] = useState("Loading...");
     const { notifShow, notifText } = useNotifStore();
     const { emailUser } = useUserStore();
-    // const [socket, setSocket] = useState<WebSocket | null>(null);
 
     useEffect(() => {
         async function fetchSensor() {
@@ -42,8 +41,6 @@ export default function Dashboard() {
             const resJson = await res.json();
             if (res.status == 401) return router.replace("/");
             if (res.status != 200) return setLoading(resJson.pesan);
-            console.log("Sensor page.tsx : ");
-            console.log(resJson);
             setSensor(resJson);
             setLoading("");
         }
@@ -57,20 +54,6 @@ export default function Dashboard() {
             <NavAtas
                 title={`Hai, ${emailUser?.split("@")[0]}`}
                 subtitle="Dashboard"
-                // menu={[
-                //     {
-                //         url: "/",
-                //         teks: "Tambah",
-                //     },
-                //     {
-                //         url: "/",
-                //         teks: "Tambah AWdwqdw",
-                //     },
-                //     {
-                //         url: "/",
-                //         teks: "Tambah AWdwqdw",
-                //     },
-                // ]}
             />
             <div className="konten px-6 pb-6">
                 {loading ? (

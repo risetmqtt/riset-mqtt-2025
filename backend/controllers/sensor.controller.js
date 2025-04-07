@@ -189,6 +189,33 @@ const postSensor = async (req, res) => {
         res.status(500).json({ pesan: error.message });
     }
 };
+const putSensor = async (req, res) => {
+    const idUser = req.user.id;
+    const idSensor = req.params.id;
+    try {
+        const { label, satuan: id_struktur } = req.body;
+        if (!label || !id_struktur)
+            return res.status(400).json({ pesan: "Parameter tidak lengkap" });
+        const fetchSensorCur = await connection
+            .promise()
+            .query(`SELECT * FROM sensor WHERE id = '${idSensor}';`);
+        if (fetchSensorCur[0].length == 0) {
+            return res.status(400).json({ pesan: "Sensor tidak ditemukan" });
+        }
+        if (fetchSensorCur[0][0].id_user != idUser) {
+            return res.status(403).json({ pesan: "Anda tidak diizinkan" });
+        }
+        await connection
+            .promise()
+            .query(
+                `UPDATE sensor set label = ?, id_struktur = ? WHERE id = '${idSensor}';`,
+                [label, id_struktur]
+            );
+        res.status(200).json({ pesan: "Sensor berhasil diedit" });
+    } catch (error) {
+        res.status(500).json({ pesan: error.message });
+    }
+};
 function isNumber(string) {
     const value = string.replace(",", ".");
     return !isNaN(value);
@@ -223,7 +250,75 @@ const postData = async (req, res) => {
         res.status(200).json({
             pesan: `Data sensor ${sensorSelected[0][0].label} berhasil ditambahkan`,
         });
-    } catch (error) {}
+    } catch (error) {
+        res.status(500).json({ pesan: error.message });
+    }
+};
+const putData = async (req, res) => {
+    try {
+        const idSensor = req.params.id;
+        const { index, nilai } = req.body;
+        const sensorSelected = await connection.promise().query(`
+            SELECT sensor.data, sensor.label, struktur_data.string
+            FROM sensor 
+            JOIN struktur_data ON sensor.id_struktur = struktur_data.id
+            WHERE sensor.id = '${idSensor}';`);
+        if (sensorSelected[0].length == 0)
+            return res.status(400).json({ pesan: "Sensor tidak ditemukan" });
+
+        if (sensorSelected[0][0].string && isNumber(nilai)) {
+            return res.status(400).json({ pesan: "Data harus berupa string" });
+        } else if (!sensorSelected[0][0].string && !isNumber(nilai)) {
+            return res.status(400).json({ pesan: "Data harus berupa number" });
+        }
+        const dataCur = JSON.parse(sensorSelected[0][0].data);
+        const dataCurNem = dataCur.map((d, ind_d) => {
+            if (ind_d == index) {
+                return {
+                    ...d,
+                    nilai: isNumber(nilai) ? Number(nilai) : nilai,
+                };
+            } else return d;
+        });
+        await connection
+            .promise()
+            .query(`UPDATE sensor set data = ? WHERE id = '${idSensor}';`, [
+                JSON.stringify(dataCurNem),
+            ]);
+        res.status(200).json({
+            pesan: `Data sensor ${sensorSelected[0][0].label} berhasil ditambahkan`,
+        });
+    } catch (error) {
+        res.status(500).json({ pesan: error.message });
+    }
+};
+const deleteData = async (req, res) => {
+    try {
+        const idSensor = req.params.id;
+        const { index } = req.body;
+        const sensorSelected = await connection.promise().query(`
+            SELECT sensor.data, sensor.label, struktur_data.string
+            FROM sensor 
+            JOIN struktur_data ON sensor.id_struktur = struktur_data.id
+            WHERE sensor.id = '${idSensor}';`);
+        if (sensorSelected[0].length == 0)
+            return res.status(400).json({ pesan: "Sensor tidak ditemukan" });
+
+        const dataCur = JSON.parse(sensorSelected[0][0].data);
+        const dataCurNem = dataCur.filter((d, ind_d) => {
+            return ind_d == index ? false : true;
+        });
+        await connection
+            .promise()
+            .query(`UPDATE sensor set data = ? WHERE id = '${idSensor}';`, [
+                JSON.stringify(dataCurNem),
+            ]);
+        res.status(200).json({
+            pesan: `Data sensor ${sensorSelected[0][0].label} berhasil ditambahkan`,
+        });
+    } catch (error) {
+        res.status(500).json({ pesan: error.message });
+    }
 };
 const resetData = async (req, res) => {
     try {
@@ -288,4 +383,7 @@ module.exports = {
     resetData,
     deleteSensor,
     searchSensor,
+    putData,
+    deleteData,
+    putSensor,
 };

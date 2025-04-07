@@ -6,6 +6,10 @@
     gap: 1%;
 }
 
+.axis {
+    border-right: 1px solid;
+}
+
 .ungu {
     border-color: var(--ungu);
 }

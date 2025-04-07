@@ -21,7 +21,6 @@ const User = () => {
         async function fetchSatuan() {
             const res = await fetch("/api/passkey");
             const resJson = await res.json();
-            console.log(resJson);
             setPasskey(resJson.passkey);
         }
         fetchSatuan();

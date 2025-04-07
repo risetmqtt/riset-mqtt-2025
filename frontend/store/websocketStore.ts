@@ -7,8 +7,27 @@ interface SensorData {
 interface WebSocketStore {
     sockets: Record<string, WebSocket>;
     sensorData: SensorData;
-    connectWebSocket: (sensor: ISensor, limit: number) => void;
+    pesanSocket: {
+        pesan: string;
+        success: boolean;
+    };
+    limitDataSocket: number;
+    updateSensorData: (
+        idSensor: string,
+        datanya: IDataUpdateSensorData
+    ) => void;
+    emptyPesanSocket: () => void;
+    connectWebSocket: (
+        sensor: ISensor,
+        limit: number,
+        passkey?: string
+    ) => void;
     disconnectWebSocket: (sensor: ISensor) => void;
+}
+interface IDataUpdateSensorData {
+    index: number;
+    nilai: string;
+    action: string;
 }
 interface IDataSensor {
     waktu: number;
@@ -55,12 +74,67 @@ const hitungCurrentValueDanBatasAtas = (
 const useWebSocketStore = create<WebSocketStore>((set, get) => ({
     sockets: {},
     sensorData: {},
+    pesanSocket: {
+        pesan: "",
+        success: false,
+    },
+    limitDataSocket: 0,
 
-    connectWebSocket: (sensor: ISensor, limit: number) => {
+    updateSensorData: (idSensor, datanya) => {
+        set((state) => {
+            const existingSensor = state.sensorData[idSensor];
+            let updatedData: IDataSensor[] = [];
+            if (datanya.action) {
+                if (datanya.action == "delete") {
+                    updatedData = existingSensor.data.filter(
+                        (d, ind_d) => ind_d != datanya.index
+                    );
+                } else if (datanya.action == "edit") {
+                    updatedData = existingSensor.data.map((d, ind_d) => {
+                        if (ind_d == datanya.index) {
+                            return {
+                                ...d,
+                                nilai: datanya.nilai,
+                            };
+                        } else return d;
+                    });
+                }
+            }
+            const { current_value, batas_atas, batas_bawah } =
+                hitungCurrentValueDanBatasAtas(
+                    updatedData,
+                    state.limitDataSocket,
+                    state.sensorData[idSensor].string
+                );
+            return {
+                sensorData: {
+                    ...state.sensorData,
+                    [idSensor]: {
+                        ...state.sensorData[idSensor],
+                        data: updatedData,
+                        current_value,
+                        batas_atas,
+                        batas_bawah,
+                    },
+                },
+            };
+        });
+    },
+
+    emptyPesanSocket: () => {
+        set((state) => ({
+            pesanSocket: {
+                pesan: "",
+                success: false,
+            },
+        }));
+    },
+
+    connectWebSocket: (sensor: ISensor, limit: number, passkey = "") => {
         if (get().sockets[sensor.id]) return; // Jika sudah ada, tidak perlu membuat baru
 
         const ws = new WebSocket(
-            `${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/?idsensor=${sensor.id}`
+            `${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/?idsensor=${sensor.id}&passkey=${passkey}`
         );
 
         ws.onopen = () => {
@@ -85,29 +159,57 @@ const useWebSocketStore = create<WebSocketStore>((set, get) => ({
         };
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            set((state) => {
-                const existingSensor = state.sensorData[sensor.id];
-                if (!existingSensor) return state; // Jika sensor tidak ditemukan, tidak perlu update
-                const updatedData = [...existingSensor.data, data]; // Data baru ditambahkan ke array yang ada
-                const { current_value, batas_atas, batas_bawah } =
-                    hitungCurrentValueDanBatasAtas(
-                        updatedData,
-                        limit,
-                        sensor.string
-                    );
-                return {
-                    sensorData: {
-                        ...state.sensorData,
-                        [sensor.id]: {
-                            ...existingSensor,
-                            data: updatedData, // Memastikan data bertambah terus
-                            current_value,
-                            batas_atas,
-                            batas_bawah,
+            if (!data.pesan) {
+                set((state) => {
+                    const existingSensor = state.sensorData[sensor.id];
+                    if (!existingSensor) return state; // Jika sensor tidak ditemukan, tidak perlu update
+                    let updatedData: IDataSensor[] = [];
+                    if (data.action) {
+                        if (data.action == "delete") {
+                            updatedData = existingSensor.data.filter(
+                                (d, ind_d) => ind_d != data.index
+                            );
+                        } else if (data.action == "edit") {
+                            updatedData = existingSensor.data.map(
+                                (d, ind_d) => {
+                                    if (ind_d == data.index) {
+                                        return {
+                                            ...d,
+                                            nilai: !sensor.string
+                                                ? Number(data.nilai)
+                                                : data.nilai,
+                                        };
+                                    } else return d;
+                                }
+                            );
+                        }
+                    } else {
+                        updatedData = [...existingSensor.data, data]; // Data baru ditambahkan ke array yang ada
+                    }
+                    const { current_value, batas_atas, batas_bawah } =
+                        hitungCurrentValueDanBatasAtas(
+                            updatedData,
+                            limit,
+                            sensor.string
+                        );
+                    return {
+                        sensorData: {
+                            ...state.sensorData,
+                            [sensor.id]: {
+                                ...existingSensor,
+                                data: updatedData, // Memastikan data bertambah terus
+                                current_value,
+                                batas_atas,
+                                batas_bawah,
+                            },
                         },
-                    },
-                };
-            });
+                    };
+                });
+            } else {
+                set((state) => ({
+                    pesanSocket: data,
+                }));
+            }
         };
 
         ws.onclose = () => {
@@ -120,6 +222,7 @@ const useWebSocketStore = create<WebSocketStore>((set, get) => ({
         };
 
         set((state) => ({
+            limitDataSocket: limit,
             sockets: { ...state.sockets, [sensor.id]: ws },
         }));
     },

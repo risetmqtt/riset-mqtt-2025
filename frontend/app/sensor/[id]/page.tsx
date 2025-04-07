@@ -10,10 +10,11 @@ import useToastStore from "@/store/toastStore";
 import useUserStore from "@/store/userStore";
 import useWebSocketStore from "@/store/websocketStore";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { FaChartBar } from "react-icons/fa";
+import { SyntheticEvent, useEffect, useRef, useState } from "react";
+import { FaChartBar, FaDatabase } from "react-icons/fa";
 import { FaTableList } from "react-icons/fa6";
-import { FiUser } from "react-icons/fi";
+import { FiEdit3, FiUser } from "react-icons/fi";
+import { MdOutlineDeleteOutline } from "react-icons/md";
 import { PiMicrosoftExcelLogo } from "react-icons/pi";
 import * as XLSX from "xlsx";
 
@@ -40,6 +41,13 @@ interface IUser {
     id: string;
     email: string;
     status: string;
+}
+
+interface IMenuNavbar {
+    teks: string;
+    url: string;
+    type: string;
+    teks_toast?: string;
 }
 
 function timeDifference(current: number, previous: number) {
@@ -104,22 +112,78 @@ export default function Sensor({
         string: false,
     });
     const [user, setUser] = useState<IUser[]>([]);
-    const { connectWebSocket, disconnectWebSocket, sensorData } =
-        useWebSocketStore();
+    const {
+        connectWebSocket,
+        disconnectWebSocket,
+        sensorData,
+        sockets,
+        pesanSocket,
+        emptyPesanSocket,
+        updateSensorData,
+    } = useWebSocketStore();
     const { toastShow, toastText, toastURL } = useToastStore();
     const { emailUser } = useUserStore();
     const { notifShow, notifText } = useNotifStore();
     const [typeDisplay, setTypeDisplay] = useState("chart");
     const containerData = useRef<HTMLDivElement>(null);
     const tableElm = useRef<HTMLTableElement>(null);
+    const [editData, setEditData] = useState(false);
+    const [valueEditData, setValueEditData] = useState({
+        isi: "",
+        index: 0,
+    });
+    const { showNotification } = useNotifStore();
+    const [passkey, setPasskey] = useState("");
+    const [toastDelete, setToastDelete] = useState({
+        show: false,
+        teks: "",
+    });
+    const [menuNavbar, setMenuNavbar] = useState<IMenuNavbar[]>([]);
+
+    useEffect(() => {
+        if (sensor.email == emailUser) {
+            setMenuNavbar([
+                {
+                    url: `/sensor/${sensor.id}/edit`,
+                    teks: "Edit record",
+                    type: "url",
+                },
+                {
+                    url: `/api/sensor/reset/${sensor.id}`,
+                    teks: "Reset data",
+                    type: "toast",
+                    teks_toast:
+                        "Are you sure you want to delete all data in this record?",
+                },
+                {
+                    url: `/api/sensor/delete/${sensor.id}`,
+                    teks: "Delete record",
+                    type: "toast",
+                    teks_toast: "Are you sure you want to delete this record?",
+                },
+            ]);
+        } else {
+            setMenuNavbar([
+                {
+                    url: `/api/sensor/delete/${sensor.id}`,
+                    teks: "Delete record",
+                    type: "toast",
+                    teks_toast: "Are you sure you want to delete this record?",
+                },
+            ]);
+        }
+    }, [emailUser, sensor]);
 
     useEffect(() => {
         async function fetchData() {
+            const resPasskey = await fetch("/api/passkey");
+            const resJsonPasskey = await resPasskey.json();
+            setPasskey(resJsonPasskey.passkey);
+
             const respoonse = await fetch(`/api/sensor/${(await params).id}`);
             const resJson = await respoonse.json();
             if (respoonse.status == 401) return router.replace("/");
             if (respoonse.status != 200) return setLoading(resJson.pesan);
-            console.log(resJson);
             if (resJson.string) setTypeDisplay("table");
             setSensor(resJson);
 
@@ -130,7 +194,6 @@ export default function Sensor({
             if (resUser.status == 401) return router.replace("/");
             if (resUser.status != 200) return setLoading(resUserJson.pesan);
             setUser(resUserJson);
-
             setLoading("");
         }
         fetchData();
@@ -139,7 +202,7 @@ export default function Sensor({
 
     useEffect(() => {
         if (sensor.id !== "00000") {
-            connectWebSocket(sensor, limitData);
+            connectWebSocket(sensor, limitData, passkey);
             return () => {
                 disconnectWebSocket(sensor);
             };
@@ -154,7 +217,7 @@ export default function Sensor({
                     containerData.current.scrollHeight;
             }
         }, 0);
-    }, [sensorData]);
+    }, [sensorData, typeDisplay]);
 
     const generateBatasWaktu = (data: IDataSensor[], limit: number) => {
         const dataLimit = [...data];
@@ -172,22 +235,109 @@ export default function Sensor({
 
     const handleExportExcel = () => {
         if (!tableElm.current) return;
-
         // ambil elemen tabel HTML
         const table = tableElm.current;
         // konversi tabel HTML ke worksheet
         const worksheet = XLSX.utils.table_to_sheet(table);
-
         // buat workbook dan tambahkan worksheet
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
-
         // ekspor workbook ke file Excel
         XLSX.writeFile(workbook, `Tabel ${sensor.label}.xlsx`);
     };
 
+    const handleSubmitEdit = async (e: SyntheticEvent) => {
+        e.preventDefault();
+        const formData = {
+            nilai: valueEditData.isi.toString(),
+            index: valueEditData.index,
+            action: "edit",
+        };
+        if (
+            sockets[sensor.id] &&
+            sockets[sensor.id].readyState === WebSocket.OPEN
+        ) {
+            sockets[sensor.id].send(JSON.stringify(formData));
+        }
+    };
+    const handleDelete = async (e: SyntheticEvent) => {
+        e.preventDefault();
+        const formData = {
+            nilai: valueEditData.isi.toString(),
+            index: valueEditData.index,
+            action: "delete",
+        };
+        if (
+            sockets[sensor.id] &&
+            sockets[sensor.id].readyState === WebSocket.OPEN
+        ) {
+            sockets[sensor.id].send(JSON.stringify(formData));
+        }
+    };
+
+    useEffect(() => {
+        if (pesanSocket.pesan != "") {
+            if (pesanSocket.success) {
+                if (editData) {
+                    updateSensorData(sensor.id, {
+                        nilai: valueEditData.isi,
+                        index: valueEditData.index,
+                        action: "edit",
+                    });
+                } else {
+                    updateSensorData(sensor.id, {
+                        nilai: valueEditData.isi,
+                        index: valueEditData.index,
+                        action: "delete",
+                    });
+                }
+            }
+            setEditData(false);
+            setValueEditData({ isi: "", index: 0 });
+            setToastDelete({
+                ...toastDelete,
+                show: false,
+            });
+            showNotification(pesanSocket.pesan);
+            setTimeout(() => {
+                emptyPesanSocket();
+            }, 3600);
+        }
+    }, [pesanSocket]);
+
     return (
         <>
+            {/* toast delete */}
+            <div className={`toast ${toastDelete.show ? "show" : ""}`}>
+                <div>
+                    <p>{toastDelete.teks}</p>
+                    <div
+                        className="my-2"
+                        style={{
+                            width: "100%",
+                            height: "1px",
+                            backgroundColor: "var(--merah)",
+                        }}
+                    ></div>
+                    <form onSubmit={handleDelete}>
+                        <div className="flex justify-center gap-1 items-center">
+                            <button type="submit">Ok</button>
+                            <button
+                                onClick={() => {
+                                    setToastDelete({
+                                        ...toastDelete,
+                                        show: false,
+                                    });
+                                }}
+                                type="button"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <Notif show={notifShow} teks={notifText} />
             <Toast
                 show={toastShow}
@@ -199,23 +349,80 @@ export default function Sensor({
                 back_url="/dashboard"
                 title={sensor.label}
                 subtitle={`ID : ${sensor.id}`}
-                menu={[
-                    {
-                        url: `/api/sensor/reset/${sensor.id}`,
-                        teks: "Reset data",
-                        type: "toast",
-                        teks_toast:
-                            "Are you sure you want to delete all data in this record?",
-                    },
-                    {
-                        url: `/api/sensor/delete/${sensor.id}`,
-                        teks: "Delete record",
-                        type: "toast",
-                        teks_toast:
-                            "Are you sure you want to delete this record?",
-                    },
-                ]}
+                menu={menuNavbar}
             />
+            {editData && (
+                <div
+                    style={{
+                        zIndex: 100,
+                        position: "fixed",
+                        left: "0",
+                        top: "0",
+                        width: "100vw",
+                        height: "100svh",
+                        backgroundColor: "rgba(255,255,255,0.6)",
+                    }}
+                    className="flex justify-center items-center p-2"
+                >
+                    <div
+                        style={{
+                            boxShadow: "0 0 10px rgba(0,0,0,0.3)",
+                            backgroundColor: "white",
+                        }}
+                        className="py-2 px-4 rounded-lg"
+                    >
+                        <form onSubmit={handleSubmitEdit}>
+                            <p className="text-coklat font-bold">
+                                Edit value data
+                            </p>
+                            <label className="input-icon mb-3">
+                                <div className="icon">
+                                    <FaDatabase />
+                                </div>
+                                <input
+                                    autoFocus={editData}
+                                    type={
+                                        sensorData[sensor.id]
+                                            ? sensorData[sensor.id].string
+                                                ? "text"
+                                                : "number"
+                                            : "text"
+                                    }
+                                    required
+                                    placeholder="Data value"
+                                    value={valueEditData.isi}
+                                    onChange={(e) =>
+                                        setValueEditData({
+                                            ...valueEditData,
+                                            isi: e.target.value,
+                                        })
+                                    }
+                                />
+                            </label>
+                            <div className="flex gap-1">
+                                <button
+                                    type="submit"
+                                    className="btn bg-coklat1 text-coklat"
+                                    style={{ flex: 1 }}
+                                >
+                                    Simpan
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn text-coklat"
+                                    style={{ flex: 1 }}
+                                    onClick={() => {
+                                        setEditData(false);
+                                        setValueEditData({ isi: "", index: 0 });
+                                    }}
+                                >
+                                    Batal
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
             <div className="konten px-6 pb-6">
                 {loading ? (
                     <p className="text-sm text-center">
@@ -225,7 +432,7 @@ export default function Sensor({
                     <div>
                         <div className="flex items-center">
                             <div style={{ flex: "1" }}>
-                                <p className="text-hijau">Current value</p>
+                                <p className="text-hijau">Last value</p>
                                 <h1 className="mb-2">
                                     {sensorData[sensor.id]
                                         ? sensorData[sensor.id].current_value
@@ -313,6 +520,19 @@ export default function Sensor({
                                                     : sensor.data
                                             }
                                             limit={limitData}
+                                            yAxis={{
+                                                show: false,
+                                                batasAtas: sensorData[sensor.id]
+                                                    ? sensorData[sensor.id]
+                                                          .batas_atas
+                                                    : 0,
+                                                batasBawah: sensorData[
+                                                    sensor.id
+                                                ]
+                                                    ? sensorData[sensor.id]
+                                                          .batas_bawah
+                                                    : 0,
+                                            }}
                                         />
                                     </div>
                                     <div className="flex justify-between">
@@ -361,6 +581,11 @@ export default function Sensor({
                                             Waktu
                                         </div>
                                         <div style={{ flex: 1 }}>Data</div>
+                                        {sensor.email == emailUser && (
+                                            <div style={{ width: "50px" }}>
+                                                Action
+                                            </div>
+                                        )}
                                     </div>
                                     {sensorData[sensor.id] && (
                                         <div
@@ -410,6 +635,55 @@ export default function Sensor({
                                                             >
                                                                 {d.nilai}
                                                             </div>
+                                                            {sensor.email ==
+                                                                emailUser && (
+                                                                <div
+                                                                    style={{
+                                                                        width: "50px",
+                                                                    }}
+                                                                    className="flex gap-2 items-center justify-center"
+                                                                >
+                                                                    <div
+                                                                        className="text-hijau"
+                                                                        onClick={() => {
+                                                                            setValueEditData(
+                                                                                {
+                                                                                    isi: d.nilai,
+                                                                                    index: ind_d,
+                                                                                }
+                                                                            );
+                                                                            setEditData(
+                                                                                true
+                                                                            );
+                                                                        }}
+                                                                    >
+                                                                        <FiEdit3 />
+                                                                    </div>
+                                                                    <div
+                                                                        className="text-merah"
+                                                                        onClick={() => {
+                                                                            setValueEditData(
+                                                                                {
+                                                                                    isi: d.nilai,
+                                                                                    index: ind_d,
+                                                                                }
+                                                                            );
+                                                                            setToastDelete(
+                                                                                {
+                                                                                    teks: `Data ${formatTgl(
+                                                                                        d.waktu
+                                                                                    )} ${formatJam(
+                                                                                        d.waktu
+                                                                                    )} akan dihapus?`,
+                                                                                    show: true,
+                                                                                }
+                                                                            );
+                                                                        }}
+                                                                    >
+                                                                        <MdOutlineDeleteOutline />
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     ))}
                                                 </>

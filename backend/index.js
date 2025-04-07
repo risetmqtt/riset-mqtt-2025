@@ -57,11 +57,25 @@ server.on("connection", (socket, req) => {
 
     socket.on("message", (message) => {
         try {
-            const datanya = {
-                idsensor: idsensor,
-                nilai: message.toString(),
-                waktu: Date.now(),
-            };
+            let datanya;
+            if (
+                message.toString().includes("{") &&
+                message.toString().includes("}")
+            ) {
+                datanya = JSON.parse(message.toString());
+                datanya.idsensor = idsensor;
+                // {
+                //     nilai: '', harus string
+                //     index: 0,
+                //     action: 'edit', 'delete'
+                // }
+            } else {
+                datanya = {
+                    idsensor: idsensor,
+                    nilai: message.toString(),
+                    waktu: Date.now(),
+                };
+            }
             console.log(datanya);
 
             function isNumber(string) {
@@ -79,7 +93,7 @@ server.on("connection", (socket, req) => {
                         WHERE sensor.id = '${idsensor}'`);
                     if (sensorSelected[0].length == 0)
                         return console.log(
-                            `Sensor : ${idsensor} tidak ditemukan (ini dari socket)`
+                            `Sensor ${idsensor} tidak ditemukan (ini dari socket)`
                         );
 
                     let isWrong = [false, ""];
@@ -104,30 +118,80 @@ server.on("connection", (socket, req) => {
                     }
                     if (isWrong[0]) {
                         if (socket.readyState === WebSocket.OPEN) {
-                            socket.send(JSON.stringify({ pesan: isWrong[1] }));
+                            socket.send(
+                                JSON.stringify({
+                                    success: false,
+                                    pesan: isWrong[1],
+                                })
+                            );
                         }
                         return;
                     }
                     let dataCur = JSON.parse(sensorSelected[0][0].data);
-                    dataCur.push({
-                        waktu: datanya.waktu,
-                        nilai: isNumber(datanya.nilai)
-                            ? Number(datanya.nilai)
-                            : datanya.nilai,
-                    });
+                    let dataCurNew;
+                    if (datanya.action) {
+                        if (datanya.action == "delete")
+                            dataCurNew = dataCur.filter(
+                                (d, ind_d) => ind_d != datanya.index
+                            );
+                        else if (datanya.action == "edit")
+                            dataCurNew = dataCur.map((d, ind_d) => {
+                                if (ind_d == datanya.index) {
+                                    return {
+                                        ...d,
+                                        nilai: isNumber(datanya.nilai)
+                                            ? Number(datanya.nilai)
+                                            : datanya.nilai,
+                                    };
+                                } else return d;
+                            });
+                        else {
+                            if (socket.readyState === WebSocket.OPEN) {
+                                socket.send(
+                                    JSON.stringify({
+                                        success: false,
+                                        pesan: "Action tidak dikenali",
+                                    })
+                                );
+                            }
+                            return;
+                        }
+                    } else {
+                        dataCurNew = [
+                            ...dataCur,
+                            {
+                                waktu: datanya.waktu,
+                                nilai: isNumber(datanya.nilai)
+                                    ? Number(datanya.nilai)
+                                    : datanya.nilai,
+                            },
+                        ];
+                    }
                     await connection
                         .promise()
                         .query(
                             `UPDATE sensor set data = ? WHERE id = '${idsensor}';`,
-                            [JSON.stringify(dataCur)]
+                            [JSON.stringify(dataCurNew)]
                         );
 
                     sensors[idsensor].forEach((client) => {
-                        if (
-                            client !== socket &&
-                            client.readyState === WebSocket.OPEN
-                        ) {
-                            client.send(JSON.stringify(datanya)); // Kirim pesan ke semua klien
+                        if (client.readyState === WebSocket.OPEN) {
+                            if (client !== socket) {
+                                client.send(
+                                    JSON.stringify({
+                                        ...datanya,
+                                        action: datanya.action,
+                                        index: datanya.index,
+                                    })
+                                ); // Kirim pesan ke semua klien
+                            } else {
+                                socket.send(
+                                    JSON.stringify({
+                                        success: true,
+                                        pesan: "Data berhasil terupdate",
+                                    })
+                                );
+                            }
                         }
                     });
                 } catch (error) {
@@ -139,6 +203,7 @@ server.on("connection", (socket, req) => {
                         ) {
                             client.send(
                                 JSON.stringify({
+                                    success: false,
                                     pesan: "Terjadi kesalahan pada server websocket",
                                 })
                             ); // Kirim pesan ke semua klien

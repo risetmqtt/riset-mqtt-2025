@@ -18,7 +18,6 @@ export default function Daftar() {
     const [eyePass, setEyePass] = useState(false);
     const handleSubmit = (e: SyntheticEvent) => {
         e.preventDefault();
-        console.log(formData);
         async function funFetchLogin() {
             const response = await fetch("/api/signup", {
                 method: "POST",
@@ -28,7 +27,6 @@ export default function Daftar() {
                 body: JSON.stringify(formData),
             });
             const result = await response.json();
-            console.log(result);
             showNotification(result.pesan);
             // router.push("/dashboard");
         }

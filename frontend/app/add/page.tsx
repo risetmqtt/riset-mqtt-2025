@@ -72,7 +72,6 @@ const Add = () => {
         setSensor(null);
         const res = await fetch(`/api/sensor/search/${formData.id}`);
         const resJson = await res.json();
-        console.log(resJson);
         if (res.status == 401) return router.replace("/");
         if (resJson.pesan) {
             setAvailable(true);
@@ -83,7 +82,6 @@ const Add = () => {
         const resUser = await fetch(`/api/sensor/userlain/${formData.id}`);
         const resUserJson = await resUser.json();
         if (resUser.status == 401) return router.replace("/");
-        console.log(resUserJson);
         setUser(resUserJson);
         setSensor(resJson);
         setFormData({ ...formData, label: resJson.label });
@@ -93,7 +91,6 @@ const Add = () => {
 
     const handleSubmit = async (e: SyntheticEvent) => {
         e.preventDefault();
-        console.log(formData);
         if (select == "1") {
             //buat sensor baru
             const response = await fetch(`/api/sensor`, {
@@ -104,7 +101,6 @@ const Add = () => {
                 body: JSON.stringify(formData),
             });
             const result = await response.json();
-            console.log(result);
             showNotification(result.pesan);
             if (response.status == 200) router.push("/dashboard");
         } else {
@@ -119,7 +115,6 @@ const Add = () => {
                 }
             );
             const result = await response.json();
-            console.log(result);
             showNotification(result.pesan);
             if (response.status == 200) router.push("/dashboard");
         }

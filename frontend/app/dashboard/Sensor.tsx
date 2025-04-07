@@ -75,6 +75,13 @@ const SensorDashboard: React.FC<SensorProps> = ({
                             <GrafikBtg
                                 warna={generateWarna(ind_sensor)}
                                 data={sensorData[sensor.id].data}
+                                yAxis={{
+                                    show: true,
+                                    batasAtas: sensorData[sensor.id].batas_atas,
+                                    batasBawah:
+                                        sensorData[sensor.id].batas_bawah,
+                                }}
+                                limit={limit}
                             />
                         )}
                     </div>
@@ -82,7 +89,7 @@ const SensorDashboard: React.FC<SensorProps> = ({
                     {!sensorData[sensor.id].string ? (
                         <>
                             <p className="text-sm">
-                                Currect value :{" "}
+                                Last value :{" "}
                                 {sensorData[sensor.id].current_value}
                                 {sensorData[sensor.id].satuan.split("@")[1] ==
                                 "-"
@@ -91,7 +98,7 @@ const SensorDashboard: React.FC<SensorProps> = ({
                                           "@"
                                       )[1]}
                             </p>
-                            <p className="text-sm">
+                            {/* <p className="text-sm">
                                 Upper limit : {sensorData[sensor.id].batas_atas}
                                 {sensorData[sensor.id].satuan.split("@")[1] ==
                                 "-"
@@ -99,10 +106,12 @@ const SensorDashboard: React.FC<SensorProps> = ({
                                     : sensorData[sensor.id].satuan.split(
                                           "@"
                                       )[1]}
-                            </p>
+                            </p> */}
                         </>
                     ) : (
-                        <p className="text-sm">*Last 10 data only</p>
+                        <>
+                            <p className="text-sm">*Last 10 data only</p>
+                        </>
                     )}
                 </div>
             ) : (
