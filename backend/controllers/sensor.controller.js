@@ -42,12 +42,13 @@ const getAll = async (req, res) => {
     const iduser = req.user.id;
     const emailuser = req.user.email;
     const idSensor = req.params.id;
+    const { pag = 1 } = req.query;
     try {
         let query = "";
         if (idSensor)
             query = `
             SELECT 
-                sensor.* ,
+                sensor.id, sensor.label, sensor.id_struktur, sensor.id_user, sensor.id_user_lain, 
                 struktur_data.satuan, 
                 struktur_data.string, 
                 user.email 
@@ -58,7 +59,7 @@ const getAll = async (req, res) => {
         else
             query = `
             SELECT 
-                sensor.*,
+                sensor.id, sensor.label, sensor.id_struktur, sensor.id_user, sensor.id_user_lain, 
                 struktur_data.satuan, 
                 struktur_data.string, 
                 user.email 
@@ -68,14 +69,26 @@ const getAll = async (req, res) => {
             WHERE sensor.id_user = '${iduser}' OR sensor.id_user_lain LIKE '%${emailuser}%'`;
         const data = await connection.promise().query(query);
         let dataFix = [];
-        data[0].forEach((d) => {
-            const elm = {
+        for (let i = 0; i < data[0].length; i++) {
+            const d = data[0][i];
+            const fetchData = await connection.promise().query(`
+                SELECT data.waktu, data.nilai FROM data WHERE id_sensor = '${
+                    d.id
+                }' ORDER BY waktu DESC LIMIT 100 OFFSET ${(pag - 1) * 100}`);
+            const panjangData = await connection.promise().query(`
+                SELECT COUNT(*) as panjang FROM data WHERE id_sensor = '${d.id}'`);
+            dataFix.push({
                 ...d,
-                data: JSON.parse(d.data),
+                panjangData: panjangData[0][0].panjang,
                 id_user_lain: JSON.parse(d.id_user_lain),
-            };
-            dataFix.push(elm);
-        });
+                data: fetchData[0].map((d) => {
+                    return {
+                        waktu: Number(d.waktu),
+                        nilai: d.nilai,
+                    };
+                }),
+            });
+        }
         if (idSensor) {
             if (dataFix.length > 0) {
                 if (
@@ -237,16 +250,22 @@ const postData = async (req, res) => {
         } else if (!sensorSelected[0][0].string && !isNumber(nilai)) {
             return res.status(400).json({ pesan: "Data harus berupa number" });
         }
-        let dataCur = JSON.parse(sensorSelected[0][0].data);
-        dataCur.push({
-            waktu: waktu ? waktu : Date.now(),
-            nilai: isNumber(nilai) ? Number(nilai) : nilai,
-        });
+        // let dataCur = JSON.parse(sensorSelected[0][0].data);
+        // dataCur.push({
+        //     waktu: waktu ? waktu : Date.now(),
+        //     nilai: ,
+        // });
         await connection
             .promise()
-            .query(`UPDATE sensor set data = ? WHERE id = '${idSensor}';`, [
-                JSON.stringify(dataCur),
-            ]);
+            .query(
+                `INSERT INTO data (id_sensor, waktu, nilai) VALUES (?,?,?)`,
+                [idSensor, waktu ? waktu : Date.now(), nilai]
+            );
+        // await connection
+        //     .promise()
+        //     .query(`UPDATE sensor set data = ? WHERE id = '${idSensor}';`, [
+        //         JSON.stringify(dataCur),
+        //     ]);
         res.status(200).json({
             pesan: `Data sensor ${sensorSelected[0][0].label} berhasil ditambahkan`,
         });
@@ -257,7 +276,7 @@ const postData = async (req, res) => {
 const putData = async (req, res) => {
     try {
         const idSensor = req.params.id;
-        const { index, nilai } = req.body;
+        const { index, nilai } = req.body; //index itu id data
         const sensorSelected = await connection.promise().query(`
             SELECT sensor.data, sensor.label, struktur_data.string
             FROM sensor 
@@ -271,20 +290,23 @@ const putData = async (req, res) => {
         } else if (!sensorSelected[0][0].string && !isNumber(nilai)) {
             return res.status(400).json({ pesan: "Data harus berupa number" });
         }
-        const dataCur = JSON.parse(sensorSelected[0][0].data);
-        const dataCurNem = dataCur.map((d, ind_d) => {
-            if (ind_d == index) {
-                return {
-                    ...d,
-                    nilai: isNumber(nilai) ? Number(nilai) : nilai,
-                };
-            } else return d;
-        });
         await connection
             .promise()
-            .query(`UPDATE sensor set data = ? WHERE id = '${idSensor}';`, [
-                JSON.stringify(dataCurNem),
-            ]);
+            .query(`UPDATE data set nilai = ? WHERE id = '${index}';`, [nilai]);
+        // const dataCur = JSON.parse(sensorSelected[0][0].data);
+        // const dataCurNem = dataCur.map((d, ind_d) => {
+        //     if (ind_d == index) {
+        //         return {
+        //             ...d,
+        //             nilai: isNumber(nilai) ? Number(nilai) : nilai,
+        //         };
+        //     } else return d;
+        // });
+        // await connection
+        //     .promise()
+        //     .query(`UPDATE sensor set data = ? WHERE id = '${idSensor}';`, [
+        //         JSON.stringify(dataCurNem),
+        //     ]);
         res.status(200).json({
             pesan: `Data sensor ${sensorSelected[0][0].label} berhasil ditambahkan`,
         });
@@ -295,7 +317,7 @@ const putData = async (req, res) => {
 const deleteData = async (req, res) => {
     try {
         const idSensor = req.params.id;
-        const { index } = req.body;
+        const { index } = req.body; //index itu id data
         const sensorSelected = await connection.promise().query(`
             SELECT sensor.data, sensor.label, struktur_data.string
             FROM sensor 
@@ -304,15 +326,18 @@ const deleteData = async (req, res) => {
         if (sensorSelected[0].length == 0)
             return res.status(400).json({ pesan: "Sensor tidak ditemukan" });
 
-        const dataCur = JSON.parse(sensorSelected[0][0].data);
-        const dataCurNem = dataCur.filter((d, ind_d) => {
-            return ind_d == index ? false : true;
-        });
         await connection
             .promise()
-            .query(`UPDATE sensor set data = ? WHERE id = '${idSensor}';`, [
-                JSON.stringify(dataCurNem),
-            ]);
+            .query(`DELETE FROM data WHERE id = '${index}';`);
+        // const dataCur = JSON.parse(sensorSelected[0][0].data);
+        // const dataCurNem = dataCur.filter((d, ind_d) => {
+        //     return ind_d == index ? false : true;
+        // });
+        // await connection
+        //     .promise()
+        //     .query(`UPDATE sensor set data = ? WHERE id = '${idSensor}';`, [
+        //         JSON.stringify(dataCurNem),
+        //     ]);
         res.status(200).json({
             pesan: `Data sensor ${sensorSelected[0][0].label} berhasil ditambahkan`,
         });
@@ -328,11 +353,14 @@ const resetData = async (req, res) => {
             .promise()
             .query(`SELECT * FROM sensor WHERE id = '${idSensor}';`);
         if (getSensorCur[0][0].id_user == iduser) {
+            // await connection
+            //     .promise()
+            //     .query(`UPDATE sensor set data = ? WHERE id = '${idSensor}';`, [
+            //         JSON.stringify([]),
+            //     ]);
             await connection
                 .promise()
-                .query(`UPDATE sensor set data = ? WHERE id = '${idSensor}';`, [
-                    JSON.stringify([]),
-                ]);
+                .query(`DELETE FROM data WHERE id_sensor = '${idSensor}';`);
             res.status(200).json({
                 pesan: `Data record berhasil direset`,
             });
@@ -357,6 +385,9 @@ const deleteSensor = async (req, res) => {
             await connection
                 .promise()
                 .query(`DELETE FROM sensor WHERE id = '${idSensor}';`);
+            await connection
+                .promise()
+                .query(`DELETE FROM data WHERE id_sensor = '${idSensor}';`);
         } else {
             const idUserLain = JSON.parse(getSensorCur[0][0].id_user_lain);
             const idUserLainNew = idUserLain.filter((e) => e != emailuser);
@@ -374,6 +405,45 @@ const deleteSensor = async (req, res) => {
         res.status(500).json({ pesan: error.message });
     }
 };
+
+const fixData = async (req, res) => {
+    try {
+        const idSensor = req.params.id;
+        const sensorSelected = await connection.promise().query(`
+            SELECT sensor.data
+            FROM sensor 
+            WHERE sensor.id = '${idSensor}';`);
+        if (sensorSelected[0].length == 0)
+            return res.status(400).json({ pesan: "Sensor tidak ditemukan" });
+        const dataCur = JSON.parse(sensorSelected[0][0].data);
+        for (let i = 0; i < dataCur.length; i++) {
+            const d = dataCur[i];
+            if (d.nilai) {
+                await connection
+                    .promise()
+                    .query(
+                        `INSERT INTO data (id_sensor, waktu, nilai) VALUES (?,?,?)`,
+                        [idSensor, d.waktu, d.nilai]
+                    );
+            }
+        }
+        res.status(200).json({
+            pesan: `Data sensor ${idSensor} berhasil ditambahkan`,
+        });
+    } catch (error) {
+        res.status(500).json({ pesan: error.message });
+    }
+};
+const getAllSensorWithoutFilter = async (req, res) => {
+    try {
+        const data = await connection.promise().query(`
+            SELECT sensor.id, sensor.label 
+            FROM sensor`);
+        return res.status(200).json(data[0]);
+    } catch (error) {
+        res.status(500).json({ pesan: error.message });
+    }
+};
 module.exports = {
     getAll,
     postSensor,
@@ -386,4 +456,6 @@ module.exports = {
     putData,
     deleteData,
     putSensor,
+    fixData,
+    getAllSensorWithoutFilter,
 };

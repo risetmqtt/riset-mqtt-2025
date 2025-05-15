@@ -24,3 +24,15 @@
     background-color: var(--ungu1);
     color: var(--ungu);
 }
+
+.putar {
+    animation: putar 1s linear infinite;
+}
+@keyframes putar {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}

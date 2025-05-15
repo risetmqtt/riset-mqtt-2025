@@ -102,7 +102,6 @@ const getPasskey = async (req, res) => {
 const getUser = async (req, res) => {
     try {
         const idUser = req.user.id;
-        console.log(`Id User : ${idUser}`);
         const data = await connection
             .promise()
             .query(`SELECT * FROM user WHERE id = '${idUser}'`);

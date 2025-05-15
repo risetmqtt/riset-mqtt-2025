@@ -53,7 +53,7 @@ server.on("connection", (socket, req) => {
     }
 
     sensors[idsensor].add(socket);
-    console.log(`Client telah terkoneksi ke sensor ${idsensor}`);
+    // console.log(`Client telah terkoneksi ke sensor ${idsensor}`);
 
     socket.on("message", (message) => {
         try {
@@ -76,7 +76,7 @@ server.on("connection", (socket, req) => {
                     waktu: Date.now(),
                 };
             }
-            console.log(datanya);
+            // console.log(datanya);
 
             function isNumber(string) {
                 const value = string.replace(",", ".");
@@ -219,7 +219,7 @@ server.on("connection", (socket, req) => {
 
     socket.on("close", () => {
         sensors[idsensor].delete(socket);
-        console.log(`Client left sensor ${idsensor}`);
+        // console.log(`Client left sensor ${idsensor}`);
 
         if (sensors[idsensor].size === 0) {
             delete sensors[idsensor];
@@ -228,4 +228,3 @@ server.on("connection", (socket, req) => {
 });
 
 console.log("WebSocket server running on ws://localhost:4002");
-3;

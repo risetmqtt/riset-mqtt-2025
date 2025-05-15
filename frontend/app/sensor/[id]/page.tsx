@@ -19,6 +19,7 @@ import { PiMicrosoftExcelLogo } from "react-icons/pi";
 import * as XLSX from "xlsx";
 
 interface IDataSensor {
+    id: number;
     waktu: number;
     nilai: string;
 }
@@ -35,6 +36,7 @@ interface ISensor {
     email: string;
     id_user: number;
     string: boolean;
+    panjangData: number;
 }
 
 interface IUser {
@@ -110,6 +112,7 @@ export default function Sensor({
         email: "",
         id_user: 0,
         string: false,
+        panjangData: 0,
     });
     const [user, setUser] = useState<IUser[]>([]);
     const {
@@ -649,7 +652,7 @@ export default function Sensor({
                                                                             setValueEditData(
                                                                                 {
                                                                                     isi: d.nilai,
-                                                                                    index: ind_d,
+                                                                                    index: d.id,
                                                                                 }
                                                                             );
                                                                             setEditData(
@@ -795,10 +798,7 @@ export default function Sensor({
                         )}
                         <h3 className="font-bold mb-1">Information</h3>
                         <p className="text-abu">
-                            Data amount :{" "}
-                            {sensorData[sensor.id]
-                                ? sensorData[sensor.id].data.length
-                                : 0}
+                            Data amount : {sensor.panjangData}
                         </p>
                         <p className="text-abu">
                             Life time :{" "}

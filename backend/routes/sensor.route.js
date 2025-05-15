@@ -13,8 +13,12 @@ const {
     putData,
     deleteData,
     putSensor,
+    fixData,
+    getAllSensorWithoutFilter,
 } = require("../controllers/sensor.controller.js");
 
+router.get("/fixdata/:id", fixData);
+router.get("/getall", getAllSensorWithoutFilter);
 router.get("/", authenticateToken, getAll);
 router.get("/:id", authenticateToken, getAll);
 router.get("/search/:id", authenticateToken, searchSensor);

@@ -30,6 +30,7 @@ interface IDataUpdateSensorData {
     action: string;
 }
 interface IDataSensor {
+    id: number;
     waktu: number;
     nilai: string;
 }
