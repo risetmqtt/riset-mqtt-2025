@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import styles from "../uji.module.css";
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 import { GoDotFill } from "react-icons/go";
@@ -12,15 +11,8 @@ interface ISensor {
     label: string;
     status: string;
 }
-interface IData {
-    id: string;
-    id_sensor: string;
-    waktu: number;
-    nilai: string;
-}
 
 export default function Dashboard() {
-    const router = useRouter();
     const [sensor, setSensor] = useState<ISensor[]>([]);
     const [loading, setLoading] = useState("Loading...");
     const [message, setMessage] = useState("");
@@ -35,7 +27,6 @@ export default function Dashboard() {
             setLoading("");
         }
         fetchSensor();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleFix = async () => {

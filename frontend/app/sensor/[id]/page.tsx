@@ -306,6 +306,7 @@ export default function Sensor({
                 emptyPesanSocket();
             }, 3600);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pesanSocket]);
 
     return (

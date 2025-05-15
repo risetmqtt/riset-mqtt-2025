@@ -10,6 +10,7 @@ import Notif from "../components/Notif";
 import useUserStore from "@/store/userStore";
 
 interface IDataSensor {
+    id: number;
     waktu: number;
     nilai: string;
 }

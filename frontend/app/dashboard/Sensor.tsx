@@ -11,6 +11,7 @@ interface SensorProps {
     limit: number;
 }
 interface IDataSensor {
+    id: number;
     waktu: number;
     nilai: string;
 }
