@@ -36,6 +36,7 @@ const SensorDashboard: React.FC<SensorProps> = ({
         useWebSocketStore();
 
     useEffect(() => {
+        disconnectWebSocket(sensor);
         connectWebSocket(sensor, limit);
         return () => {
             disconnectWebSocket(sensor);

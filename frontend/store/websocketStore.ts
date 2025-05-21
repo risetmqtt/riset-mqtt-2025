@@ -25,7 +25,7 @@ interface WebSocketStore {
     disconnectWebSocket: (sensor: ISensor) => void;
 }
 interface IDataUpdateSensorData {
-    index: number;
+    iddata: number;
     nilai: string;
     action: string;
 }
@@ -88,11 +88,11 @@ const useWebSocketStore = create<WebSocketStore>((set, get) => ({
             if (datanya.action) {
                 if (datanya.action == "delete") {
                     updatedData = existingSensor.data.filter(
-                        (d, ind_d) => ind_d != datanya.index
+                        (d) => d.id != datanya.iddata
                     );
                 } else if (datanya.action == "edit") {
-                    updatedData = existingSensor.data.map((d, ind_d) => {
-                        if (ind_d == datanya.index) {
+                    updatedData = existingSensor.data.map((d) => {
+                        if (d.id == datanya.iddata) {
                             return {
                                 ...d,
                                 nilai: datanya.nilai,
@@ -168,21 +168,19 @@ const useWebSocketStore = create<WebSocketStore>((set, get) => ({
                     if (data.action) {
                         if (data.action == "delete") {
                             updatedData = existingSensor.data.filter(
-                                (d, ind_d) => ind_d != data.index
+                                (d) => d.id != data.iddata
                             );
                         } else if (data.action == "edit") {
-                            updatedData = existingSensor.data.map(
-                                (d, ind_d) => {
-                                    if (ind_d == data.index) {
-                                        return {
-                                            ...d,
-                                            nilai: !sensor.string
-                                                ? Number(data.nilai)
-                                                : data.nilai,
-                                        };
-                                    } else return d;
-                                }
-                            );
+                            updatedData = existingSensor.data.map((d) => {
+                                if (d.id == data.iddata) {
+                                    return {
+                                        ...d,
+                                        nilai: !sensor.string
+                                            ? Number(data.nilai)
+                                            : data.nilai,
+                                    };
+                                } else return d;
+                            });
                         }
                     } else {
                         updatedData = [...existingSensor.data, data]; // Data baru ditambahkan ke array yang ada

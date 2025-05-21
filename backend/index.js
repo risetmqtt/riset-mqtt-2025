@@ -55,28 +55,40 @@ server.on("connection", (socket, req) => {
     sensors[idsensor].add(socket);
     // console.log(`Client telah terkoneksi ke sensor ${idsensor}`);
 
-    socket.on("message", (message) => {
+    socket.on("message", (message, isBinary) => {
         try {
+            const msgStr = isBinary
+                ? message.toString("utf8")
+                : message.toString();
+
             let datanya;
-            if (
-                message.toString().includes("{") &&
-                message.toString().includes("}")
-            ) {
-                datanya = JSON.parse(message.toString());
-                datanya.idsensor = idsensor;
+            if (msgStr.includes("{") && msgStr.includes("}")) {
+                try {
+                    datanya = JSON.parse(msgStr);
+                    datanya.idsensor = idsensor;
+                } catch (e) {
+                    if (socket.readyState === WebSocket.OPEN) {
+                        socket.send(
+                            JSON.stringify({
+                                success: false,
+                                pesan: "Format JSON tidak valid",
+                            })
+                        );
+                    }
+                    return;
+                }
                 // {
                 //     nilai: '', harus string
-                //     index: 0,
+                //     iddata: 0,
                 //     action: 'edit', 'delete'
                 // }
             } else {
                 datanya = {
                     idsensor: idsensor,
-                    nilai: message.toString(),
+                    nilai: msgStr,
                     waktu: Date.now(),
                 };
             }
-            // console.log(datanya);
 
             function isNumber(string) {
                 const value = string.replace(",", ".");
@@ -85,12 +97,15 @@ server.on("connection", (socket, req) => {
 
             async function postData() {
                 try {
-                    const sensorSelected = await connection.promise().query(`
+                    const sensorSelected = await connection.promise().query(
+                        `
                         SELECT sensor.*, user.passkey, struktur_data.string 
                         FROM sensor 
                         JOIN user ON user.id = sensor.id_user 
                         JOIN struktur_data ON sensor.id_struktur = struktur_data.id 
-                        WHERE sensor.id = '${idsensor}'`);
+                        WHERE sensor.id = ?`,
+                        [idsensor]
+                    );
                     if (sensorSelected[0].length == 0)
                         return console.log(
                             `Sensor ${idsensor} tidak ditemukan (ini dari socket)`
@@ -127,25 +142,41 @@ server.on("connection", (socket, req) => {
                         }
                         return;
                     }
-                    let dataCur = JSON.parse(sensorSelected[0][0].data);
-                    let dataCurNew;
+
+                    // let dataCur = await connection
+                    //     .promise()
+                    //     .query(`SELECT data FROM sensor WHERE id = ?;`, [
+                    //         idsensor,
+                    //     ]);
+                    // let dataCurNew;
                     if (datanya.action) {
-                        if (datanya.action == "delete")
-                            dataCurNew = dataCur.filter(
-                                (d, ind_d) => ind_d != datanya.index
-                            );
-                        else if (datanya.action == "edit")
-                            dataCurNew = dataCur.map((d, ind_d) => {
-                                if (ind_d == datanya.index) {
-                                    return {
-                                        ...d,
-                                        nilai: isNumber(datanya.nilai)
-                                            ? Number(datanya.nilai)
-                                            : datanya.nilai,
-                                    };
-                                } else return d;
-                            });
-                        else {
+                        if (datanya.action == "delete") {
+                            await connection
+                                .promise()
+                                .query(`DELETE FROM data WHERE id = ?;`, [
+                                    datanya.iddata,
+                                ]);
+                            // dataCurNew = dataCur[0].filter(
+                            //     (d) => d.id != datanya.iddata
+                            // );
+                        } else if (datanya.action == "edit") {
+                            await connection
+                                .promise()
+                                .query(
+                                    `UPDATE data SET nilai = ? WHERE id = ?;`,
+                                    [datanya.iddata]
+                                );
+                            // dataCurNew = dataCur[0].map((d) => {
+                            //     if (d.id == datanya.iddata) {
+                            //         return {
+                            //             ...d,
+                            //             nilai: isNumber(datanya.nilai)
+                            //                 ? Number(datanya.nilai)
+                            //                 : datanya.nilai,
+                            //         };
+                            //     } else return d;
+                            // });
+                        } else {
                             if (socket.readyState === WebSocket.OPEN) {
                                 socket.send(
                                     JSON.stringify({
@@ -157,22 +188,24 @@ server.on("connection", (socket, req) => {
                             return;
                         }
                     } else {
-                        dataCurNew = [
-                            ...dataCur,
-                            {
-                                waktu: datanya.waktu,
-                                nilai: isNumber(datanya.nilai)
-                                    ? Number(datanya.nilai)
-                                    : datanya.nilai,
-                            },
-                        ];
+                        const hasilInsert = await connection
+                            .promise()
+                            .query(
+                                `INSERT INTO data (id_sensor, waktu, nilai) VALUES (?, ? ,?);`,
+                                [idsensor, datanya.waktu, datanya.nilai]
+                            );
+                        // dataCurNew = [
+                        //     ...dataCur[0],
+                        //     {
+                        //         id: hasilInsert[0].insertId,
+                        //         idsensor: idsensor,
+                        //         waktu: datanya.waktu,
+                        //         nilai: isNumber(datanya.nilai)
+                        //             ? Number(datanya.nilai)
+                        //             : datanya.nilai,
+                        //     },
+                        // ];
                     }
-                    await connection
-                        .promise()
-                        .query(
-                            `UPDATE sensor set data = ? WHERE id = '${idsensor}';`,
-                            [JSON.stringify(dataCurNew)]
-                        );
 
                     sensors[idsensor].forEach((client) => {
                         if (client.readyState === WebSocket.OPEN) {
@@ -181,7 +214,7 @@ server.on("connection", (socket, req) => {
                                     JSON.stringify({
                                         ...datanya,
                                         action: datanya.action,
-                                        index: datanya.index,
+                                        idsensor: datanya.idsensor,
                                     })
                                 ); // Kirim pesan ke semua klien
                             } else {

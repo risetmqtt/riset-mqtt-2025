@@ -81,10 +81,11 @@ const getAll = async (req, res) => {
                 ...d,
                 panjangData: panjangData[0][0].panjang,
                 id_user_lain: JSON.parse(d.id_user_lain),
-                data: fetchData[0].map((d) => {
+                data: fetchData[0].map((d1) => {
                     return {
-                        waktu: Number(d.waktu),
-                        nilai: d.nilai,
+                        waktu: Number(d1.waktu),
+                        nilai: d1.nilai,
+                        id: d1.id,
                     };
                 }),
             });

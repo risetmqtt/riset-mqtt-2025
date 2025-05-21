@@ -133,7 +133,7 @@ export default function Sensor({
     const [editData, setEditData] = useState(false);
     const [valueEditData, setValueEditData] = useState({
         isi: "",
-        index: 0,
+        iddata: 0,
     });
     const { showNotification } = useNotifStore();
     const [passkey, setPasskey] = useState("");
@@ -205,6 +205,7 @@ export default function Sensor({
 
     useEffect(() => {
         if (sensor.id !== "00000") {
+            disconnectWebSocket(sensor);
             connectWebSocket(sensor, limitData, passkey);
             return () => {
                 disconnectWebSocket(sensor);
@@ -253,7 +254,7 @@ export default function Sensor({
         e.preventDefault();
         const formData = {
             nilai: valueEditData.isi.toString(),
-            index: valueEditData.index,
+            iddata: valueEditData.iddata,
             action: "edit",
         };
         if (
@@ -267,7 +268,7 @@ export default function Sensor({
         e.preventDefault();
         const formData = {
             nilai: valueEditData.isi.toString(),
-            index: valueEditData.index,
+            iddata: valueEditData.iddata,
             action: "delete",
         };
         if (
@@ -284,19 +285,19 @@ export default function Sensor({
                 if (editData) {
                     updateSensorData(sensor.id, {
                         nilai: valueEditData.isi,
-                        index: valueEditData.index,
+                        iddata: valueEditData.iddata,
                         action: "edit",
                     });
                 } else {
                     updateSensorData(sensor.id, {
                         nilai: valueEditData.isi,
-                        index: valueEditData.index,
+                        iddata: valueEditData.iddata,
                         action: "delete",
                     });
                 }
             }
             setEditData(false);
-            setValueEditData({ isi: "", index: 0 });
+            setValueEditData({ isi: "", iddata: 0 });
             setToastDelete({
                 ...toastDelete,
                 show: false,
@@ -417,7 +418,10 @@ export default function Sensor({
                                     style={{ flex: 1 }}
                                     onClick={() => {
                                         setEditData(false);
-                                        setValueEditData({ isi: "", index: 0 });
+                                        setValueEditData({
+                                            isi: "",
+                                            iddata: 0,
+                                        });
                                     }}
                                 >
                                     Batal
@@ -653,7 +657,7 @@ export default function Sensor({
                                                                             setValueEditData(
                                                                                 {
                                                                                     isi: d.nilai,
-                                                                                    index: d.id,
+                                                                                    iddata: d.id,
                                                                                 }
                                                                             );
                                                                             setEditData(
@@ -669,7 +673,7 @@ export default function Sensor({
                                                                             setValueEditData(
                                                                                 {
                                                                                     isi: d.nilai,
-                                                                                    index: ind_d,
+                                                                                    iddata: d.id,
                                                                                 }
                                                                             );
                                                                             setToastDelete(
