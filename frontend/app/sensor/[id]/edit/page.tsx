@@ -44,9 +44,15 @@ const Edit = ({ params }: { params: Promise<{ id: string }> }) => {
             const resJson = await res.json();
             console.log(resJsonSensor);
             console.log(resJson);
-            setSatuan(
-                resJson.filter((s: ISatuan) => s.string == resJsonSensor.string)
-            );
+            if (resJsonSensor.string) {
+                setSatuan(
+                    resJson.filter(
+                        (s: ISatuan) => s.string == resJsonSensor.string
+                    )
+                );
+            } else {
+                setSatuan(resJson);
+            }
             setLoading("");
         }
         fetchData();
