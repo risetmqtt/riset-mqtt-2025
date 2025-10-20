@@ -40,6 +40,7 @@ const sensors = {};
 
 function heartbeat() {
     this.isAlive = true;
+    console.log("server received ping");
 }
 
 server.on("connection", (socket, req) => {
@@ -278,6 +279,7 @@ const interval = setInterval(() => {
         }
         socket.isAlive = false;
         socket.ping();
+        console.log("server sending ping");
     });
 }, 30000);
 
