@@ -37,6 +37,12 @@ const WebSocket = require("ws");
 const { parse } = require("url");
 const server = new WebSocket.Server({ port: 4002 });
 const sensors = {};
+
+function heartbeat() {
+    this.isAlive = true;
+    console.log("server received ping");
+}
+
 server.on("connection", (socket, req) => {
     const { query } = parse(req.url, true);
     const idsensor = query.idsensor ? query.idsensor : "XXXXX";
@@ -54,6 +60,10 @@ server.on("connection", (socket, req) => {
 
     sensors[idsensor].add(socket);
     // console.log(`Client telah terkoneksi ke sensor ${idsensor}`);
+
+    // biar koneksi tidak terputus ketika idle
+    socket.isAlive = true;
+    socket.on("pong", heartbeat);
 
     socket.on("message", (message, isBinary) => {
         try {
@@ -258,6 +268,24 @@ server.on("connection", (socket, req) => {
             delete sensors[idsensor];
         }
     });
+});
+
+// 🔹 Tambahkan interval ping/pong untuk menjaga koneksi tetap hidup
+const interval = setInterval(() => {
+    server.clients.forEach((socket) => {
+        if (socket.isAlive === false) {
+            console.log("Socket tidak merespons ping, terminate...");
+            return socket.terminate();
+        }
+        socket.isAlive = false;
+        socket.ping();
+        console.log("server sending ping");
+    });
+}, 30000);
+
+// Bersihkan interval ketika server ditutup
+server.on("close", function close() {
+    clearInterval(interval);
 });
 
 console.log("WebSocket server running on ws://localhost:4002");

@@ -9,13 +9,16 @@ import Notif from "../components/Notif";
 import { HiOutlineMail } from "react-icons/hi";
 import useUserStore from "@/store/userStore";
 import { RiLockPasswordLine } from "react-icons/ri";
+import { MdOutlinePassword } from "react-icons/md";
 
 const User = () => {
     const router = useRouter();
     const { notifShow, notifText, showNotification } = useNotifStore();
     const { emailUser } = useUserStore();
     const [passkey, setPasskey] = useState("");
+    const [newPass, setNewPass] = useState("");
     const [perubaha, setPerubahan] = useState(false);
+    const [changePass, setChangePass] = useState(false);
 
     useEffect(() => {
         async function fetchSatuan() {
@@ -42,11 +45,15 @@ const User = () => {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ passkey }),
+                body: JSON.stringify({ passkey, password: newPass }),
             });
             const result = await response.json();
             showNotification(result.pesan);
-            if (response.status == 200) setPerubahan(false);
+            if (response.status == 200) {
+                setPerubahan(false);
+                setNewPass("");
+                setChangePass(false);
+            }
         }
         funFetchPasskey();
     };
@@ -70,6 +77,34 @@ const User = () => {
                         value={emailUser ? emailUser : ""}
                     />
                 </label>
+                <p className="text-ungu font-bold">Password</p>
+                {!changePass ? (
+                    <button
+                        onClick={() => {
+                            setChangePass(true);
+                        }}
+                        className={"btn w-full bg-ungu1 text-ungu mb-2"}
+                    >
+                        Change Password
+                    </button>
+                ) : (
+                    <label className="input-icon mb-2">
+                        <div className="icon">
+                            <MdOutlinePassword />
+                        </div>
+                        <input
+                            type="text"
+                            required
+                            placeholder="New Password"
+                            onChange={(e) => {
+                                setNewPass(e.target.value);
+                                setPerubahan(true);
+                            }}
+                            value={newPass}
+                            spellCheck={false}
+                        />
+                    </label>
+                )}
                 <p className="text-ungu font-bold">Passkey</p>
                 <label className="input-icon mb-2">
                     <div className="icon">

@@ -74,16 +74,39 @@ const signup = async (req, res) => {
 };
 const passkey = async (req, res) => {
     try {
-        const { passkey } = req.body;
+        const { passkey, password } = req.body;
         const idUser = req.user.id;
         if (!passkey)
             return res.status(404).json({ pesan: "Masukan passkey!" });
-        await connection
-            .promise()
-            .query(`UPDATE user set passkey = ? WHERE id = '${idUser}';`, [
-                passkey,
-            ]);
-        res.status(200).json({ pesan: "Passkey berhasil diubah" });
+        if (password) {
+            try {
+                bcrypt.hash(password, 10, async (err, hash) => {
+                    if (err) {
+                        return res
+                            .status(500)
+                            .json({ pesan: "Error hashing passwords" });
+                    }
+                    await connection
+                        .promise()
+                        .query(
+                            `UPDATE user set passkey = ?, sandi = ? WHERE id = '${idUser}';`,
+                            [passkey, hash]
+                        );
+                    return res
+                        .status(200)
+                        .json({ pesan: "User berhasil diubah" });
+                });
+            } catch (error) {
+                return res.status(500).json({ pesan: error.message });
+            }
+        } else {
+            await connection
+                .promise()
+                .query(`UPDATE user set passkey = ? WHERE id = '${idUser}';`, [
+                    passkey,
+                ]);
+            res.status(200).json({ pesan: "Passkey berhasil diubah" });
+        }
     } catch (error) {
         res.status(500).json({ pesan: error.message });
     }
