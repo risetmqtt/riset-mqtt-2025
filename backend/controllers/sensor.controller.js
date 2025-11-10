@@ -72,9 +72,15 @@ const getAll = async (req, res) => {
         for (let i = 0; i < data[0].length; i++) {
             const d = data[0][i];
             const fetchData = await connection.promise().query(`
-                SELECT data.waktu, data.nilai FROM data WHERE id_sensor = '${
-                    d.id
-                }' ORDER BY waktu DESC LIMIT 100 OFFSET ${(pag - 1) * 100}`);
+                SELECT *
+                FROM (
+                    SELECT data.waktu, data.nilai, data.id
+                    FROM data
+                    WHERE id_sensor = '${d.id}'
+                    ORDER BY id DESC
+                    LIMIT 100 OFFSET ${(pag - 1) * 100}
+                ) AS sub
+                ORDER BY id ASC;`);
             const panjangData = await connection.promise().query(`
                 SELECT COUNT(*) as panjang FROM data WHERE id_sensor = '${d.id}'`);
             dataFix.push({
