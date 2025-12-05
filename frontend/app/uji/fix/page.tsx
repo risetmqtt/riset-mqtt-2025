@@ -41,7 +41,7 @@ export default function Dashboard() {
                 })
             );
             const res = await fetch(`/api/fix/${s.id}`);
-            const resJson = await res.json();
+            await res.json();
             if (res.status != 200) {
                 setSensor(
                     sensor.map((s, ind_s) => {

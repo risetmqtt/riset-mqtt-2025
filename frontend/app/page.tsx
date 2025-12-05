@@ -23,7 +23,7 @@ export default function Login() {
     useEffect(() => {
         async function checkLogin() {
             const response = await fetch("/api/login");
-            const data = await response.json();
+            await response.json();
             if (response.status == 200) router.replace("/dashboard");
         }
         checkLogin();
