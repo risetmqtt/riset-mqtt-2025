@@ -42,8 +42,6 @@ const Edit = ({ params }: { params: Promise<{ id: string }> }) => {
 
             const res = await fetch("/api/satuan");
             const resJson = await res.json();
-            console.log(resJsonSensor);
-            console.log(resJson);
             if (resJsonSensor.string) {
                 setSatuan(
                     resJson.filter(
@@ -69,7 +67,6 @@ const Edit = ({ params }: { params: Promise<{ id: string }> }) => {
             body: JSON.stringify(formData),
         });
         const result = await response.json();
-        console.log(result);
         showNotification(result.pesan);
         if (response.status == 200) router.push(`/sensor/${idSensorCur}`);
     };
@@ -86,10 +83,6 @@ const Edit = ({ params }: { params: Promise<{ id: string }> }) => {
         }
         return "bg-coklat1 text-coklat";
     };
-
-    useEffect(() => {
-        console.log(formData);
-    }, [formData]);
 
     return (
         <>

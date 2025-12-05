@@ -43,7 +43,6 @@ export default function Dashboard() {
             const resJson = await res.json();
             if (res.status == 401) return router.replace("/");
             if (res.status != 200) return setLoading(resJson.pesan);
-            console.log(resJson);
             const newWsDum = [] as WebSocket[];
             resJson.forEach((s: ISensor, ind_s: number) => {
                 newWsDum[ind_s] = new WebSocket(
@@ -61,8 +60,6 @@ export default function Dashboard() {
             });
             showNotification("Koneksi Websocket diperbarui");
             setSocket(newWsDum);
-            console.log("sensor");
-            console.log(resJson);
             setSensor(resJson);
             setLoading("");
         }

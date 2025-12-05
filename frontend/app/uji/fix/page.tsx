@@ -22,7 +22,6 @@ export default function Dashboard() {
             const res = await fetch("/api/fix/getall");
             const resJson = await res.json();
             if (res.status != 200) return setLoading(resJson.pesan);
-            console.log(resJson);
             setSensor(resJson.map((s: ISensor) => ({ ...s, status: "" })));
             setLoading("");
         }
@@ -43,8 +42,6 @@ export default function Dashboard() {
             );
             const res = await fetch(`/api/fix/${s.id}`);
             const resJson = await res.json();
-            console.log(`Hasil fixing ${s.label} ==============`);
-            console.log(resJson);
             if (res.status != 200) {
                 setSensor(
                     sensor.map((s, ind_s) => {
