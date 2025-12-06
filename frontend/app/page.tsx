@@ -23,9 +23,7 @@ export default function Login() {
     useEffect(() => {
         async function checkLogin() {
             const response = await fetch("/api/login");
-            const data = await response.json();
-            console.log(data);
-            console.log(response.status);
+            await response.json();
             if (response.status == 200) router.replace("/dashboard");
         }
         checkLogin();
@@ -34,7 +32,6 @@ export default function Login() {
 
     const handleSubmit = (e: SyntheticEvent) => {
         e.preventDefault();
-        console.log(formData);
         async function funFetchLogin() {
             const response = await fetch("/api/login", {
                 method: "POST",

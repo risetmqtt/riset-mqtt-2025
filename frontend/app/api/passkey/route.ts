@@ -28,9 +28,6 @@ export async function POST(req: NextRequest) {
 export async function GET() {
     try {
         const token = (await cookies()).get("token")?.value;
-        console.log("get passkey skuy");
-        console.log(token);
-        console.log(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/passkey`);
         const response = await fetch(
             `${process.env.BACKEND_URL}/auth/passkey`,
             {
