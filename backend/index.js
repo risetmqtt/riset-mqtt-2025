@@ -36,20 +36,68 @@ app.listen(port, "0.0.0.0", () => {
 const WebSocket = require("ws");
 const { parse } = require("url");
 const server = new WebSocket.Server({ port: 4002 });
+const clients = new Map(); // Map socket => { rooms: Set() }
 const sensors = {};
+let socketAdmin = null;
+const keyAdmin = process.env.KEY_ADMIN;
+const connLog = mysql.createPool({
+    host: process.env.DB_LOG_HOST,
+    user: process.env.DB_LOG_USER,
+    password: process.env.DB_LOG_PASSWORD,
+    database: process.env.DB_LOG_DBNAME,
+    dateStrings: true,
+});
+
+function myLog(level = "info", message = "", context = {}, ip_address = null) {
+    (async () => {
+        try {
+            const tglSkrg = getYmdHisNow();
+            await connLog
+                .promise()
+                .query(
+                    `INSERT INTO websocket (level, message, context, ip_address, created_at, updated_at) VALUES (?, ? ,?, ?, ? ,?);`,
+                    [
+                        level,
+                        `[iotku.org] ${message}`,
+                        JSON.stringify(context),
+                        ip_address,
+                        tglSkrg,
+                        tglSkrg,
+                    ],
+                );
+        } catch (error) {
+            console.log(error);
+        }
+    })();
+}
 
 function heartbeat() {
     this.isAlive = true;
-    console.log("server received ping");
 }
 
 server.on("connection", (socket, req) => {
     const { query } = parse(req.url, true);
     const idsensor = query.idsensor ? query.idsensor : "XXXXX";
     const passkey = query.passkey ? query.passkey : "";
+    const ip =
+        req.headers["x-forwarded-for"]?.split(",")[0] ||
+        req.socket.remoteAddress;
+    const created_at = getYmdHisNow();
+    if (!clients.get(socket)) {
+        clients.set(socket, {
+            rooms: new Set(),
+            ip,
+            created_at,
+        });
+    }
 
     if (!idsensor) {
-        server.close(1008, "idsensor is required");
+        socket.send(
+            JSON.stringify({
+                success: false,
+                pesan: "idsensor is required",
+            }),
+        );
         return;
     }
 
@@ -65,6 +113,19 @@ server.on("connection", (socket, req) => {
     socket.isAlive = true;
     socket.on("pong", heartbeat);
 
+    // kirim ke socket admin
+    socketAdmin?.send(
+        JSON.stringify({
+            tipe: "data",
+            success: true,
+            message: `[${created_at}][INFO][${ip}] Connect with WebSocket Server!`,
+            data: {
+                clients: serializeClients(clients),
+                rooms: serializeRooms(sensors),
+            },
+        }),
+    );
+
     socket.on("message", (message, isBinary) => {
         try {
             const msgStr = isBinary
@@ -75,6 +136,31 @@ server.on("connection", (socket, req) => {
             if (msgStr.includes("{") && msgStr.includes("}")) {
                 try {
                     datanya = JSON.parse(msgStr);
+                    if (
+                        datanya.isAdmin &&
+                        !socketAdmin &&
+                        datanya.key == keyAdmin
+                    ) {
+                        socketAdmin = socket;
+                        socket.send(
+                            JSON.stringify({
+                                tipe: "admin",
+                                success: true,
+                                message: "Berhasil menyambungkan socket admin!",
+                                data: {
+                                    clients: serializeClients(clients),
+                                    rooms: serializeRooms(sensors),
+                                },
+                            }),
+                        );
+                        myLog(
+                            "info",
+                            `Berhasil menyambungkan socket admin!`,
+                            {},
+                            ip,
+                        );
+                        return;
+                    }
                     datanya.idsensor = idsensor;
                 } catch (e) {
                     if (socket.readyState === WebSocket.OPEN) {
@@ -82,9 +168,25 @@ server.on("connection", (socket, req) => {
                             JSON.stringify({
                                 success: false,
                                 pesan: "Format JSON tidak valid",
-                            })
+                            }),
                         );
                     }
+                    socketAdmin?.send(
+                        JSON.stringify({
+                            tipe: "log",
+                            success: false,
+                            message: `[${getYmdHisNow()}][ERROR][${ip}] Format JSON tidak valid! ${e.message}`,
+                        }),
+                    );
+                    myLog(
+                        "error",
+                        `Format JSON tidak valid!`,
+                        {
+                            message: msgStr,
+                            error: e,
+                        },
+                        ip,
+                    );
                     return;
                 }
                 // {
@@ -114,12 +216,24 @@ server.on("connection", (socket, req) => {
                         JOIN user ON user.id = sensor.id_user 
                         JOIN struktur_data ON sensor.id_struktur = struktur_data.id 
                         WHERE sensor.id = ?`,
-                        [idsensor]
+                        [idsensor],
                     );
-                    if (sensorSelected[0].length == 0)
-                        return console.log(
-                            `Sensor ${idsensor} tidak ditemukan (ini dari socket)`
+                    if (sensorSelected[0].length == 0) {
+                        socketAdmin?.send(
+                            JSON.stringify({
+                                tipe: "log",
+                                success: false,
+                                message: `[${getYmdHisNow()}][WARNING][${ip}] Sensor ${idsensor} tidak ditemukan!`,
+                            }),
                         );
+                        myLog(
+                            "warning",
+                            `Sensor ${idsensor} tidak ditemukan!`,
+                            {},
+                            ip,
+                        );
+                        return;
+                    }
 
                     let isWrong = [false, ""];
 
@@ -147,9 +261,26 @@ server.on("connection", (socket, req) => {
                                 JSON.stringify({
                                     success: false,
                                     pesan: isWrong[1],
-                                })
+                                }),
                             );
                         }
+                        socketAdmin?.send(
+                            JSON.stringify({
+                                tipe: "log",
+                                success: false,
+                                message: `[${getYmdHisNow()}][WARNING][${ip}] ${isWrong[1]}`,
+                            }),
+                        );
+                        myLog(
+                            "warning",
+                            isWrong[1],
+                            {
+                                passkey,
+                                datanya,
+                                sensorSelected: sensorSelected[0][0],
+                            },
+                            ip,
+                        );
                         return;
                     }
 
@@ -169,12 +300,28 @@ server.on("connection", (socket, req) => {
                             // dataCurNew = dataCur[0].filter(
                             //     (d) => d.id != datanya.iddata
                             // );
+
+                            socketAdmin?.send(
+                                JSON.stringify({
+                                    tipe: "log",
+                                    success: true,
+                                    message: `[${getYmdHisNow()}][INFO][${ip}] Delete data Sensor ${idsensor} | Id data ${datanya.iddata}`,
+                                }),
+                            );
+                            myLog(
+                                "info",
+                                `Delete data Sensor ${idsensor} | Id data ${datanya.iddata}`,
+                                {
+                                    datanya,
+                                },
+                                ip,
+                            );
                         } else if (datanya.action == "edit") {
                             await connection
                                 .promise()
                                 .query(
                                     `UPDATE data SET nilai = ? WHERE id = ?;`,
-                                    [datanya.iddata]
+                                    [datanya.nilai, datanya.iddata],
                                 );
                             // dataCurNew = dataCur[0].map((d) => {
                             //     if (d.id == datanya.iddata) {
@@ -186,15 +333,45 @@ server.on("connection", (socket, req) => {
                             //         };
                             //     } else return d;
                             // });
+                            socketAdmin?.send(
+                                JSON.stringify({
+                                    tipe: "log",
+                                    success: true,
+                                    message: `[${getYmdHisNow()}][INFO][${ip}] Edit data Sensor ${idsensor} | Id data ${datanya.iddata} | Value : ${datanya.nilai}`,
+                                }),
+                            );
+                            myLog(
+                                "info",
+                                `Edit data Sensor ${idsensor} | Id data ${datanya.iddata} | Value : ${datanya.nilai}`,
+                                {
+                                    datanya,
+                                },
+                                ip,
+                            );
                         } else {
                             if (socket.readyState === WebSocket.OPEN) {
                                 socket.send(
                                     JSON.stringify({
                                         success: false,
-                                        pesan: "Action tidak dikenali",
-                                    })
+                                        pesan: "Action tidak dikenali!",
+                                    }),
                                 );
                             }
+                            socketAdmin?.send(
+                                JSON.stringify({
+                                    tipe: "log",
+                                    success: false,
+                                    message: `[${getYmdHisNow()}][WARNING][${ip}] Action tidak dikenali!`,
+                                }),
+                            );
+                            myLog(
+                                "warning",
+                                "Action tidak dikenali!",
+                                {
+                                    datanya,
+                                },
+                                ip,
+                            );
                             return;
                         }
                     } else {
@@ -202,7 +379,7 @@ server.on("connection", (socket, req) => {
                             .promise()
                             .query(
                                 `INSERT INTO data (id_sensor, waktu, nilai) VALUES (?, ? ,?);`,
-                                [idsensor, datanya.waktu, datanya.nilai]
+                                [idsensor, datanya.waktu, datanya.nilai],
                             );
                         // dataCurNew = [
                         //     ...dataCur[0],
@@ -215,6 +392,21 @@ server.on("connection", (socket, req) => {
                         //             : datanya.nilai,
                         //     },
                         // ];
+                        socketAdmin?.send(
+                            JSON.stringify({
+                                tipe: "log",
+                                success: true,
+                                message: `[${getYmdHisNow()}][INFO][${ip}] Add data Sensor ${idsensor} | Value ${datanya.nilai}`,
+                            }),
+                        );
+                        myLog(
+                            "info",
+                            `Add data Sensor ${idsensor} | Value ${datanya.nilai}`,
+                            {
+                                datanya,
+                            },
+                            ip,
+                        );
                     }
 
                     sensors[idsensor].forEach((client) => {
@@ -225,20 +417,19 @@ server.on("connection", (socket, req) => {
                                         ...datanya,
                                         action: datanya.action,
                                         idsensor: datanya.idsensor,
-                                    })
+                                    }),
                                 ); // Kirim pesan ke semua klien
                             } else {
                                 socket.send(
                                     JSON.stringify({
                                         success: true,
                                         pesan: "Data berhasil terupdate",
-                                    })
+                                    }),
                                 );
                             }
                         }
                     });
                 } catch (error) {
-                    console.error(error.message);
                     sensors[idsensor].forEach((client) => {
                         if (
                             client !== socket &&
@@ -248,25 +439,77 @@ server.on("connection", (socket, req) => {
                                 JSON.stringify({
                                     success: false,
                                     pesan: "Terjadi kesalahan pada server websocket",
-                                })
+                                }),
                             ); // Kirim pesan ke semua klien
                         }
                     });
+                    socketAdmin?.send(
+                        JSON.stringify({
+                            tipe: "log",
+                            success: false,
+                            message: `[${getYmdHisNow()}][ERROR][${ip}] Terjadi kesalahan pada server websocket! ${error.message}`,
+                        }),
+                    );
+                    myLog(
+                        "error",
+                        `Terjadi kesalahan pada server websocket!`,
+                        {
+                            error,
+                        },
+                        ip,
+                    );
                 }
             }
             postData();
         } catch (error) {
-            console.log(error.message);
+            socketAdmin?.send(
+                JSON.stringify({
+                    tipe: "log",
+                    success: false,
+                    message: `[${getYmdHisNow()}][ERROR][${ip}] Terjadi kesalahan pada server websocket! ${error.message}`,
+                }),
+            );
+            myLog(
+                "error",
+                `Terjadi kesalahan pada server websocket!`,
+                {
+                    error,
+                },
+                ip,
+            );
         }
     });
 
     socket.on("close", () => {
         sensors[idsensor].delete(socket);
-        // console.log(`Client left sensor ${idsensor}`);
-
         if (sensors[idsensor].size === 0) {
             delete sensors[idsensor];
         }
+        clients.delete(socket);
+        if (socket == socketAdmin) {
+            socketAdmin = null;
+        } else {
+            socketAdmin?.send(
+                JSON.stringify({
+                    tipe: "data",
+                    success: true,
+                    message: `[${getYmdHisNow()}][INFO][${ip}] Socket terputus!`,
+                    data: {
+                        clients: serializeClients(clients),
+                        rooms: serializeRooms(sensors),
+                    },
+                }),
+            );
+        }
+        myLog(
+            "info",
+            `Socket terputus!`,
+            {
+                socket,
+                sensors,
+            },
+            ip,
+        );
     });
 });
 
@@ -274,12 +517,10 @@ server.on("connection", (socket, req) => {
 const interval = setInterval(() => {
     server.clients.forEach((socket) => {
         if (socket.isAlive === false) {
-            console.log("Socket tidak merespons ping, terminate...");
             return socket.terminate();
         }
         socket.isAlive = false;
         socket.ping();
-        console.log("server sending ping");
     });
 }, 30000);
 
@@ -289,3 +530,34 @@ server.on("close", function close() {
 });
 
 console.log("WebSocket server running on ws://localhost:4002");
+
+function getYmdHisNow() {
+    const now = new Date();
+    const pad = (n) => n.toString().padStart(2, "0");
+    const formattedDate = `${now.getFullYear()}-${pad(
+        now.getMonth() + 1,
+    )}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(
+        now.getMinutes(),
+    )}:${pad(now.getSeconds())}`;
+    return formattedDate;
+}
+
+function serializeClients(clients) {
+    const result = [];
+    for (const [socket, info] of clients.entries()) {
+        result.push({
+            ip: info.ip,
+            created_at: info.created_at,
+            rooms: Array.from(info.rooms),
+            readyState: socket.readyState,
+        });
+    }
+    return result;
+}
+
+function serializeRooms(rooms) {
+    return Object.entries(rooms).map(([room_id, sockets]) => ({
+        room_id,
+        size: sockets.size,
+    }));
+}
