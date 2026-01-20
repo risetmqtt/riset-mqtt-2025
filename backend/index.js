@@ -533,12 +533,18 @@ console.log("WebSocket server running on ws://localhost:4002");
 
 function getYmdHisNow() {
     const now = new Date();
-    const pad = (n) => n.toString().padStart(2, "0");
-    const formattedDate = `${now.getFullYear()}-${pad(
-        now.getMonth() + 1,
-    )}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(
-        now.getMinutes(),
-    )}:${pad(now.getSeconds())}`;
+    const jakartaTime = new Date(
+        now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }),
+    );
+    const pad = (n) => String(n).padStart(2, "0");
+    const formattedDate =
+        `${jakartaTime.getFullYear()}-` +
+        `${pad(jakartaTime.getMonth() + 1)}-` +
+        `${pad(jakartaTime.getDate())} ` +
+        `${pad(jakartaTime.getHours())}:` +
+        `${pad(jakartaTime.getMinutes())}:` +
+        `${pad(jakartaTime.getSeconds())}`;
+
     return formattedDate;
 }
 
