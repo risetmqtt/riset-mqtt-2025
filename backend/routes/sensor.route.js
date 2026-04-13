@@ -23,7 +23,7 @@ router.get("/getall", getAllSensorWithoutFilter);
 router.get("/", authenticateToken, getAll);
 router.get("/search/:id", authenticateToken, searchSensor);
 router.get("/userlain/:id", authenticateToken, getUserLain);
-router.get("/lastdata/:id", authenticateToken, getLastData);
+router.get("/lastdata/:id", getLastData);
 router.get("/:id", authenticateToken, getAll);
 router.post("/userlain/:id", authenticateToken, postUserLain);
 router.post("/", authenticateToken, postSensor);
