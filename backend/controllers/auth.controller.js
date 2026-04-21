@@ -13,6 +13,11 @@ const connection = mysql.createPool({
 const login = async (req, res) => {
     try {
         const { email, sandi } = req.body;
+        const raw = String(process.env.EMAIL_ADMIN || "");
+        const admins = raw
+            .split(";")
+            .map((x) => x.trim().toLowerCase())
+            .filter((x) => x !== "");
         const user = await connection
             .promise()
             .query(`SELECT * FROM user WHERE email = '${email}'`);
@@ -37,6 +42,7 @@ const login = async (req, res) => {
                     token: accessToken,
                     idUser: user[0][0].id,
                     emailUser: email,
+                    is_admin: admins.includes(String(email).toLowerCase()),
                 });
             } else {
                 res.status(401).json({ pesan: "Sandi salah" });
@@ -131,7 +137,16 @@ const getUser = async (req, res) => {
         if (data[0].length == 0) {
             return res.status(400).json({ pesan: "User tidak ditemukan" });
         }
-        res.status(200).json(data[0][0]);
+        const raw = String(process.env.EMAIL_ADMIN || "");
+        const admins = raw
+            .split(";")
+            .map((x) => x.trim().toLowerCase())
+            .filter((x) => x !== "");
+        const row = data[0][0];
+        res.status(200).json({
+            ...row,
+            is_admin: admins.includes(String(row.email || "").toLowerCase()),
+        });
     } catch (error) {
         res.status(500).json({ pesan: error.message });
     }

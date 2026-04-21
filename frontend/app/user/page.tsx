@@ -19,12 +19,19 @@ const User = () => {
     const [newPass, setNewPass] = useState("");
     const [perubaha, setPerubahan] = useState(false);
     const [changePass, setChangePass] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
 
     useEffect(() => {
         async function fetchSatuan() {
             const res = await fetch("/api/passkey");
             const resJson = await res.json();
             setPasskey(resJson.passkey);
+
+            const resUser = await fetch("/api/login");
+            const resUserJson = await resUser.json();
+            if (resUser.status == 200) {
+                setIsAdmin(!!resUserJson.is_admin);
+            }
         }
         fetchSatuan();
     }, []);
@@ -133,6 +140,16 @@ const User = () => {
                         className={"btn w-full bg-ungu1 text-ungu"}
                     >
                         Simpan perubahan
+                    </button>
+                )}
+                {isAdmin && (
+                    <button
+                        onClick={() => {
+                            router.push("/admin");
+                        }}
+                        className={"btn w-full mt-1 bg-coklat1 text-coklat"}
+                    >
+                        Admin Dashboard
                     </button>
                 )}
                 <button

@@ -6,6 +6,7 @@ const port = 8082;
 const authRoute = require("./routes/auth.route.js");
 const sensorRoute = require("./routes/sensor.route.js");
 const satuanRoute = require("./routes/satuan.route.js");
+const adminRoute = require("./routes/admin.route.js");
 const mysql = require("mysql2");
 const connection = mysql.createPool({
     host: process.env.DB_HOST,
@@ -26,6 +27,7 @@ app.get("/backend/", (req, res) => {
 app.use("/backend/auth", authRoute);
 app.use("/backend/sensor", sensorRoute);
 app.use("/backend/satuan", satuanRoute);
+app.use("/backend/admin", adminRoute);
 
 app.listen(port, "0.0.0.0", () => {
     console.log(`Backend IOT app listening on port ${port}`);

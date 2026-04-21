@@ -15,6 +15,17 @@
     --merah1: #ffd4d5;
 }
 
+.hide-scrollbar {
+    /* For Firefox */
+    scrollbar-width: none;
+    /* For Internet Explorer and Edge */
+    -ms-overflow-style: none;
+}
+/* For Chrome, Safari, and Opera */
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
 /* width */
 ::-webkit-scrollbar {
     width: 5px;

@@ -23,8 +23,10 @@ export default function Login() {
     useEffect(() => {
         async function checkLogin() {
             const response = await fetch("/api/login");
-            await response.json();
-            if (response.status == 200) router.replace("/dashboard");
+            const result = await response.json();
+            if (response.status == 200) {
+                router.replace(result.is_admin ? "/admin" : "/dashboard");
+            }
         }
         checkLogin();
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -46,7 +48,7 @@ export default function Login() {
                 return;
             }
             setUser(String(result.idUser), result.emailUser);
-            router.push("/dashboard");
+            router.push(result.is_admin ? "/admin" : "/dashboard");
         }
         funFetchLogin();
     };
